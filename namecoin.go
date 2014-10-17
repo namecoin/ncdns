@@ -1,5 +1,5 @@
 package main
-import "github.com/conformal/btcjson"
+import "github.com/hlandauf/btcjson"
 import "encoding/json"
 import "sync/atomic"
 import "fmt"
