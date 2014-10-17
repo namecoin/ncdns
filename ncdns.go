@@ -14,6 +14,7 @@ import "strings"
 import "net"
 import "time"
 import "sort"
+import "github.com/hlandau/degoutils/config"
 
 //import "crypto/rsa"
 //import "crypto/rand"
@@ -49,6 +50,17 @@ type Server struct {
   kskPrivate dns.PrivateKey
   zsk dns.DNSKEY
   zskPrivate dns.PrivateKey
+  cfg ServerConfig
+}
+
+type ServerConfig struct {
+  Bind string         `default:":53" usage:"Address to bind to (e.g. 0.0.0.0:53)"`
+  PublicKey string    `default:"ncdns.key" usage:"Path to the DNSKEY public key file"`
+  PrivateKey string   `default:"ncdns.private" usage:"Path to the corresponding private key file"`
+  NamecoinRPCUsername string `default:"" usage:"Namecoin RPC username"`
+  NamecoinRPCPassword string `default:"" usage:"Namecoin RPC password"`
+  NamecoinRPCAddress  string `default:"localhost:8336" usage:"Namecoin RPC server address"`
+  CacheMaxEntries     int    `default:"1000" usage:"Maximum name cache entries"`
 }
 
 func (s *Server) doRunListener(ds *dns.Server) {
@@ -58,7 +70,8 @@ func (s *Server) doRunListener(ds *dns.Server) {
 
 func (s *Server) runListener(net string) *dns.Server {
   ds := &dns.Server {
-    Addr: "127.0.0.2:53",
+    Addr: s.cfg.Bind,
+    //"127.0.0.2:53",
     //Addr: ":1153",
     Net: net,
     Handler: s.mux,
@@ -805,10 +818,10 @@ func (s *Server) Run() {
   s.mux.HandleFunc(".", s.handle)
 
   // key setup
-  kskf, err := os.Open("Kbit.dt.qien.net.+008+60970.key")
+  kskf, err := os.Open(s.cfg.PublicKey)
   log.Fatale(err)
 
-  kskRR, err := dns.ReadRR(kskf, "Kbit.dt.qien.net.+008+60970.key")
+  kskRR, err := dns.ReadRR(kskf, s.cfg.PublicKey)
   log.Fatale(err)
 
   ksk, ok := kskRR.(*dns.DNSKEY)
@@ -819,10 +832,10 @@ func (s *Server) Run() {
 
   s.ksk = ksk
 
-  kskPrivatef, err := os.Open("Kbit.dt.qien.net.+008+60970.private")
+  kskPrivatef, err := os.Open(s.cfg.PrivateKey)
   log.Fatale(err)
 
-  s.kskPrivate, err = s.ksk.ReadPrivateKey(kskPrivatef, "Kbit.dt.qien.net.+008+60970.private")
+  s.kskPrivate, err = s.ksk.ReadPrivateKey(kskPrivatef, s.cfg.PrivateKey)
   log.Fatale(err)
 
   s.zsk.Hdr.Rrtype = dns.TypeDNSKEY
@@ -838,10 +851,10 @@ func (s *Server) Run() {
   // run
   s.udpListener = s.runListener("udp")
   s.tcpListener = s.runListener("tcp")
-  s.nc.Username = "user"
-  s.nc.Password = "password"
-  s.nc.Server   = "127.0.0.1:8336"
-  s.cache.MaxEntries = 1000
+  s.nc.Username = s.cfg.NamecoinRPCUsername
+  s.nc.Password = s.cfg.NamecoinRPCPassword
+  s.nc.Server   = s.cfg.NamecoinRPCAddress
+  s.cache.MaxEntries = s.cfg.CacheMaxEntries
 
   log.Info("Ready.")
 
@@ -855,8 +868,20 @@ func (s *Server) Run() {
   }
 }
 
+func NewServer(cfg *ServerConfig) *Server {
+  s := &Server{}
+  s.cfg = *cfg
+  return s
+}
+
 func main() {
-  s := Server{}
+  cfg := ServerConfig {}
+  config := config.Configurator{
+    ProgramName: "ncdns",
+    ConfigFilePaths: []string { "etc/ncdns.conf", "/etc/ncdns/ncdns.conf", },
+  }
+  config.ParseFatal(&cfg)
+  s := NewServer(&cfg)
   s.Run()
 }
 
