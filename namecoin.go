@@ -114,3 +114,5 @@ func (nc *NamecoinConn) Query(name string) (v string, err error) {
     return "", fmt.Errorf("bad reply")
   }
 }
+
+// © 2014 Hugo Landau <hlandau@devever.net>      GPLv3 or later
