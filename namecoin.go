@@ -81,6 +81,14 @@ func (nc *NamecoinConn) Query(name string) (v string, err error) {
     v = `{"ns":["ns1.badger.bit","ns2.badger.bit"],"map":{"ns1":{"ip":["1.2.3.4"]},"ns2":{"ip":["2.3.4.5"]}},"ds":[[12345,8,2,"lu6y/9mwDNRpTngni179qwqARGVntp9jTaB48NkPAbo="]]}`
     return
   }
+  if name == "d/secure" {
+    v = `{"ns":["ns1.example.com","ns2.example.com"],"ds":[[12345,8,2,"lu6y/9mwDNRpTngni179qwqARGVntp9jTaB48NkPAbo="]]}`
+    return
+  }
+  if name == "d/insecure" {
+    v = `{"ns":["ns1.example.com","ns2.example.com"]}`
+    return
+  }
 
   cmd, err := NewNameShowCmd(newID(), name)
   if err != nil {

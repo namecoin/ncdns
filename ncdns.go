@@ -61,6 +61,7 @@ type ServerConfig struct {
   NamecoinRPCPassword string `default:"" usage:"Namecoin RPC password"`
   NamecoinRPCAddress  string `default:"localhost:8336" usage:"Namecoin RPC server address"`
   CacheMaxEntries     int    `default:"1000" usage:"Maximum name cache entries"`
+  SelfIP              string `default:"127.127.127.127" usage:"The canonical IP address for this service"`
 }
 
 func (s *Server) doRunListener(ds *dns.Server) {
@@ -258,6 +259,7 @@ func (ncv *ncValue) GetDSs() (dss []dns.DS, err error) {
 // f[a]("", "a.b.c.d.e.f.g.zzz.bit")
 
 var ErrNoSuchDomain = fmt.Errorf("no such domain")
+var ErrNotNamecoin = fmt.Errorf("not a namecoin domain")
 var ErrNoResults = fmt.Errorf("no results")
 
 func stepName(n string) string {
@@ -278,138 +280,194 @@ func stepName(n string) string {
   return base32.HexEncoding.EncodeToString(b)
 }
 
-func (s *Server) addAnswersUnderNCValue(ncv *ncValue, subname, basename, rootname string, qtype uint16, res *dns.Msg, depth int) error {
+func absname(n string) string {
+  if n == "" {
+    return "."
+  }
+  if n[len(n)-1] != '.' {
+    return n + "."
+  }
+  return n
+}
+
+func (tx *Tx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) error {
   toAdd          := []dns.RR{}
   toAddAuthority := []dns.RR{}
 
   nss, nsserr := ncv.GetNSs()
-  log.Info("ncv  sub=", subname, "  base=", basename, "  root=", rootname, "  qtype=", qtype, "  nss=", nss, "  nsserr=", nsserr)
+  //log.Info("ncv  isub=", isubname, "  sub=", subname, "  base=", tx.basename, "  root=", tx.rootname, "  qtype=", tx.qtype, "  nss=", nss, "  nsserr=", nsserr)
 
   if nsserr == nil && len(nss) > 0 {
+    nsn := sn
+    if len(sn) > 0 {
+      nsn += "."
+    }
+    nsn += tx.basename + "." + tx.rootname
+    log.Info("ncv nsn=", nsn)
     for _, ns := range nss {
       toAddAuthority = append(toAddAuthority, &dns.NS {
-        Hdr: dns.RR_Header { Name: strings.TrimRight(basename, ".") + ".", Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 60, },
-        Ns: strings.TrimRight(ns, ".") + ".",
+        Hdr: dns.RR_Header { Name: absname(nsn), Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 60, },
+        Ns: absname(ns),
       })
     }
   }
 
-  if subname != "" {
-    head, rest, err := splitDomainHead(subname)
+  if tx.istype(dns.TypeA) {
+    ips, err := ncv.GetIPs()
     if err != nil {
       return err
     }
 
-    sub, ok := ncv.Map[head]
-    if !ok {
-      sub, ok = ncv.Map["*"]
-      if !ok {
-        return ErrNoSuchDomain
+    for _, ip := range ips {
+      pip := net.ParseIP(ip)
+      if pip == nil || pip.To4() == nil {
+        continue
       }
+      toAdd = append(toAdd, &dns.A {
+        Hdr: dns.RR_Header { Name: absname(tx.qname), Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60, },
+        A: pip })
     }
-    return s.addAnswersUnderNCValue(sub, rest, head + "." + basename, rootname, qtype, res, depth+1)
   }
 
-  switch qtype {
-    case dns.TypeA:
-      ips, err := ncv.GetIPs()
-      if err != nil {
-        return err
+  if tx.istype(dns.TypeAAAA) {
+    ips, err := ncv.GetIP6s()
+    if err != nil {
+      return err
+    }
+
+    for _, ip := range ips {
+      pip := net.ParseIP(ip)
+      if pip == nil || pip.To4() != nil {
+        continue
       }
-
-      for _, ip := range ips {
-        pip := net.ParseIP(ip)
-        if pip == nil || pip.To4() == nil {
-          continue
-        }
-        toAdd = append(toAdd, &dns.A {
-          Hdr: dns.RR_Header { Name: basename, Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 60, },
-          A: pip })
-      }
-
-    case dns.TypeAAAA:
-      ips, err := ncv.GetIP6s()
-      if err != nil {
-        return err
-      }
-
-      for _, ip := range ips {
-        pip := net.ParseIP(ip)
-        if pip == nil || pip.To4() != nil {
-          continue
-        }
-        toAdd = append(toAdd, &dns.AAAA {
-          Hdr: dns.RR_Header { Name: basename, Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 60, },
-          AAAA: pip })
-      }
-
-    case dns.TypeNS:
-      if nsserr != nil {
-        return nsserr
-      }
-
-      for _, ns := range nss {
-        ns = strings.TrimRight(ns, ".") + "."
-        toAdd = append(toAdd, &dns.NS {
-          Hdr: dns.RR_Header { Name: basename, Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 60, },
-          Ns: ns })
-      }
-
-    case dns.TypeTXT:
-      // TODO
-    case dns.TypeMX:
-      // TODO
-    case dns.TypeSRV:
-      // TODO
-
-    case dns.TypeDS:
-      dss, err := ncv.GetDSs()
-      if err != nil {
-        return err
-      }
-
-      for i := range dss {
-        dss[i].Hdr.Name = basename
-        toAdd = append(toAdd, &dss[i])
-      }
-      log.Info("ds: ", dss, "  ", err)
-
-    default:
-      // ...
+      toAdd = append(toAdd, &dns.AAAA {
+        Hdr: dns.RR_Header { Name: absname(tx.qname), Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 60, },
+        AAAA: pip })
+    }
   }
+
+  if tx.istype(dns.TypeNS) && len(toAddAuthority) == 0 {
+    if nsserr != nil {
+      return nsserr
+    }
+
+    for _, ns := range nss {
+      ns = absname(ns)
+      toAdd = append(toAdd, &dns.NS {
+        Hdr: dns.RR_Header { Name: absname(tx.qname), Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 60, },
+        Ns: ns })
+    }
+  }
+
+    //case dns.TypeTXT:
+      // TODO
+    //case dns.TypeMX:
+      // TODO
+    //case dns.TypeSRV:
+      // TODO
+
+  if tx.istype(dns.TypeDS) {
+    dss, err := ncv.GetDSs()
+    if err != nil {
+      return err
+    }
+
+    for i := range dss {
+      dss[i].Hdr.Name = absname(tx.qname)
+      toAddAuthority = append(toAddAuthority, &dss[i])
+    }
+    log.Info("ds: ", dss, "  ", err)
+  }
+
 
   if len(toAdd) == 0 && len(toAddAuthority) == 0 {
     // we didn't get anything, so try the "" entry in the map
     if m, ok := ncv.Map[""]; ok {
-      return s.addAnswersUnderNCValue(m, "", basename, rootname, qtype, res, depth+1)
+      return tx.addAnswersUnderNCValueActual(m, sn)
     }
   }
 
   for i := range toAdd {
-    res.Answer = append(res.Answer, toAdd[i])
+    tx.res.Answer = append(tx.res.Answer, toAdd[i])
   }
 
-  if qtype != dns.TypeDS {
+  if tx.qtype != dns.TypeDS {
     for i := range toAddAuthority {
-      res.Ns = append(res.Ns, toAddAuthority[i])
+      tx.res.Ns = append(tx.res.Ns, toAddAuthority[i])
     }
   }
 
   return nil
 }
 
-func (s *Server) addAnswersUnderDomain(d *Domain, subname, basename, rootname string, qtype uint16, res *dns.Msg) error {
-  err := s.addAnswersUnderNCValue(d.ncv, subname, basename, rootname, qtype, res, 0)
+func (tx *Tx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
+    shortCircuitFunc func(curNCV *ncValue) bool) (xncv *ncValue, sn string, err error) {
+
+  if shortCircuitFunc != nil && shortCircuitFunc(ncv) {
+    return ncv, subname, nil
+  }
+
+  if isubname != "" {
+    head, rest, err := splitDomainHead(isubname)
+    if err != nil {
+      return nil, "", err
+    }
+
+    sub, ok := ncv.Map[head]
+    if !ok {
+      sub, ok = ncv.Map["*"]
+      if !ok {
+        return nil, "", ErrNoSuchDomain
+      }
+    }
+    return tx._findNCValue(sub, rest, head + "." + subname, depth+1, shortCircuitFunc)
+  }
+
+  if shortCircuitFunc != nil {
+    return nil, subname, ErrNoSuchDomain
+  }
+
+  return ncv, subname, nil
+}
+
+func (tx *Tx) findNCValue(ncv *ncValue, subname string,
+    shortCircuitFunc func(curNCV *ncValue) bool) (xncv *ncValue, sn string, err error) {
+  return tx._findNCValue(ncv, subname, "", 0, shortCircuitFunc)
+}
+
+func hasNS(ncv *ncValue) bool {
+  nss, err := ncv.GetNSs()
+  return err == nil && len(nss) > 0
+}
+
+func (tx *Tx) addAnswersUnderNCValue(rncv *ncValue, subname string) error {
+  ncv, sn, err := tx.findNCValue(rncv, subname, hasNS)
+  if err != nil {
+    return err
+  }
+
+  log.Info("ncv actual: ", sn)
+  return tx.addAnswersUnderNCValueActual(ncv, sn)
+}
+
+func (tx *Tx) addAnswersUnderDomain(d *Domain) error {
+  err := tx.addAnswersUnderNCValue(d.ncv, tx.subname)
   if err == ErrNoResults {
     err = nil
   }
   return err
 }
 
-func (s *Server) determineDomain(qname string) (subname, basename, rootname string, err error) {
+func (tx *Tx) determineDomain() (subname, basename, rootname string, err error) {
+  qname := tx.qname
   qname = strings.TrimRight(qname, ".")
   parts := strings.Split(qname, ".")
   if len(parts) < 2 {
+    if parts[0] != "bit" {
+      err = ErrNotNamecoin
+      return
+    }
+
     rootname = parts[0]
     return
   }
@@ -431,64 +489,74 @@ func (s *Server) determineDomain(qname string) (subname, basename, rootname stri
     }
   }
 
-  err = fmt.Errorf("not a namecoin domain: ", qname)
+  err = ErrNotNamecoin
   return
 }
 
-func (s *Server) addMetaAnswers(subname, basename, rootname string, qtype uint16, res *dns.Msg) error {
-  switch subname {
+func (tx *Tx) addMetaAnswers() error {
+  ip := net.ParseIP(tx.s.cfg.SelfIP)
+  if ip == nil || ip.To4() == nil {
+    return fmt.Errorf("invalid value specified for SelfIP")
+  }
+
+  switch tx.subname {
     case "this":
-      switch qtype {
-        case dns.TypeA, dns.TypeANY:
-          res.Answer = append(res.Answer, &dns.A {
-            Hdr: dns.RR_Header {
-              Name: subname + "." + basename + "." + rootname + ".",
-              Ttl: 86400,
-              Class: dns.ClassINET,
-              Rrtype: dns.TypeA,
-            },
-            A: net.IPv4(127,127,127,127),
-          })
-        default:
+      if tx.istype(dns.TypeA) {
+        tx.res.Answer = append(tx.res.Answer, &dns.A {
+          Hdr: dns.RR_Header {
+            Name: tx.subname + "." + tx.basename + "." + tx.rootname + ".",
+            Ttl: 86400,
+            Class: dns.ClassINET,
+            Rrtype: dns.TypeA,
+          },
+          A: ip,
+        })
       }
+    case "":
     default:
+      tx.setRcode(dns.RcodeNameError)
   }
 
   return nil
 }
 
-func (s *Server) addRootAnswers(rootname string, qtype uint16, res *dns.Msg) error {
+func (tx *Tx) addRootSOA() error {
+  soa := &dns.SOA {
+    Hdr: dns.RR_Header {
+      Name: absname(tx.rootname),
+      Ttl: 86400,
+      Class: dns.ClassINET,
+      Rrtype: dns.TypeSOA,
+    },
+    Ns: absname("this.x--nmc." + tx.rootname),
+    Mbox: ".",
+    Serial: 1,
+    Refresh: 600,
+    Retry: 600,
+    Expire: 7200,
+    Minttl: 600,
+  }
+  if tx.istype(dns.TypeSOA) && absname(tx.rootname) == absname(tx.qname) {
+    tx.res.Answer = append(tx.res.Answer, soa)
+  } else {
+    tx.res.Ns = append(tx.res.Ns, soa)
+  }
+  return nil
+}
+
+func (tx *Tx) istype(x uint16) bool {
+  return tx.qtype == x || tx.qtype == dns.TypeANY
+}
+
+func (tx *Tx) addRootAnswers() error {
   //useKSK := false
 
-  s.zsk.Hdr.Name = rootname + "."
+  tx.s.zsk.Hdr.Name = tx.rootname + "."
 
-  if qtype != dns.TypeNS && qtype != dns.TypeDNSKEY {
-    soa := &dns.SOA {
+  if tx.istype(dns.TypeNS) {
+    tx.res.Answer = append(tx.res.Answer, &dns.NS {
       Hdr: dns.RR_Header {
-        Name: rootname + ".",
-        Ttl: 86400,
-        Class: dns.ClassINET,
-        Rrtype: dns.TypeSOA,
-      },
-      Ns: "this.x--nmc.bit.",
-      Mbox: ".",
-      Serial: 1,
-      Refresh: 600,
-      Retry: 600,
-      Expire: 7200,
-      Minttl: 600,
-    }
-    if qtype == dns.TypeSOA || qtype == dns.TypeANY {
-      res.Answer = append(res.Answer, soa)
-    } else {
-      res.Ns = append(res.Ns, soa)
-    }
-  }
-
-  if qtype == dns.TypeNS || qtype == dns.TypeANY {
-    res.Answer = append(res.Answer, &dns.NS {
-      Hdr: dns.RR_Header {
-        Name: rootname + ".",
+        Name: absname(tx.rootname),
         Ttl: 86400,
         Class: dns.ClassINET,
         Rrtype: dns.TypeNS,
@@ -497,26 +565,30 @@ func (s *Server) addRootAnswers(rootname string, qtype uint16, res *dns.Msg) err
     })
   }
 
-  if qtype == dns.TypeDNSKEY || qtype == dns.TypeANY {
-    res.Answer = append(res.Answer, s.ksk)
-    res.Answer = append(res.Answer, &s.zsk)
+  if tx.istype(dns.TypeDNSKEY) {
+    tx.s.ksk.Hdr.Name = absname(tx.rootname)
+    tx.s.zsk.Hdr.Name = tx.s.ksk.Hdr.Name
+
+    tx.res.Answer = append(tx.res.Answer, tx.s.ksk)
+    tx.res.Answer = append(tx.res.Answer, &tx.s.zsk)
     //useKSK = true
   }
 
   log.Info("addRootAnswers/sr")
 
-  /*err := s.signResponse(res, useKSK, rootname)
-  if err != nil {
-    log.Infoe(err, "/sr")
-    return err
-  }*/
+  if len(tx.res.Answer) == 0 || tx.istype(dns.TypeSOA) {
+    err := tx.addRootSOA()
+    if err != nil {
+      return err
+    }
+  }
 
   log.Info("done sr")
 
   return nil
 }
 
-func (s *Server) signRRs(rra []dns.RR, useKSK bool, rootname string) (dns.RR, error) {
+func (tx *Tx) signRRs(rra []dns.RR, useKSK bool) (dns.RR, error) {
   if len(rra) == 0 {
     return nil, fmt.Errorf("no RRs to such")
   }
@@ -527,14 +599,14 @@ func (s *Server) signRRs(rra []dns.RR, useKSK bool, rootname string) (dns.RR, er
     Algorithm: dns.RSASHA256,
     Expiration: uint32(now.Add(time.Duration(10)*time.Minute).Unix()),
     Inception: uint32(now.Unix()),
-    SignerName: rootname + ".",
+    SignerName: tx.rootname + ".",
   }
-  pk := s.zskPrivate
+  pk := tx.s.zskPrivate
   if useKSK {
-    pk = s.kskPrivate
-    rrsig.KeyTag = s.ksk.KeyTag()
+    pk = tx.s.kskPrivate
+    rrsig.KeyTag = tx.s.ksk.KeyTag()
   } else {
-    rrsig.KeyTag = s.zsk.KeyTag()
+    rrsig.KeyTag = tx.s.zsk.KeyTag()
   }
 
   err := rrsig.Sign(pk, rra)
@@ -545,19 +617,23 @@ func (s *Server) signRRs(rra []dns.RR, useKSK bool, rootname string) (dns.RR, er
   return rrsig, nil
 }
 
-func shouldSignType(t uint16) bool {
+func shouldSignType(t uint16, isAuthoritySection bool) bool {
+  //log.Info("shouldSignType ", t, " ", isAuthoritySection)
   switch t {
     case dns.TypeOPT:
       return false
+    case dns.TypeNS:
+      return !isAuthoritySection
     default:
       return true
   }
 }
 
-func (s *Server) signResponseSection(rra *[]dns.RR, useKSK bool, rootname string) error {
+func (tx *Tx) signResponseSection(rra *[]dns.RR, useKSK bool) error {
   if len(*rra) == 0 {
     return nil
   }
+  //log.Info("sign section: ", *rra)
 
   i := 0
   a := []dns.RR{}
@@ -577,8 +653,8 @@ func (s *Server) signResponseSection(rra *[]dns.RR, useKSK bool, rootname string
       i++
     }
 
-    if shouldSignType(t) {
-      srr, err := s.signRRs(a, useKSK, rootname)
+    if shouldSignType(pt, (rra == &tx.res.Ns) ) {
+      srr, err := tx.signRRs(a, useKSK)
       if err != nil {
         return err
       }
@@ -590,25 +666,24 @@ func (s *Server) signResponseSection(rra *[]dns.RR, useKSK bool, rootname string
     a = []dns.RR{}
   }
 
-
   return nil
 }
 
-func useDNSSEC(msg *dns.Msg) bool {
-  opt := msg.IsEdns0()
+func (tx *Tx) useDNSSEC() bool {
+  opt := tx.req.IsEdns0()
   if opt == nil {
     return false
   }
   return opt.Do()
 }
 
-func (s *Server) signResponse(res *dns.Msg, useKSK bool, rootname string) error {
-  if !useDNSSEC(res) {
+func (tx *Tx) signResponse(useKSK bool) error {
+  if !tx.useDNSSEC() {
     return nil
   }
 
-  for _, r := range []*[]dns.RR { &res.Answer, &res.Ns, &res.Extra } {
-    err := s.signResponseSection(r, useKSK, rootname)
+  for _, r := range []*[]dns.RR { &tx.res.Answer, &tx.res.Ns, &tx.res.Extra } {
+    err := tx.signResponseSection(r, useKSK)
     if err != nil {
       log.Infoe(err, "fail signResponse")
       return err
@@ -632,19 +707,19 @@ func (p uint16Slice) Len() int { return len(p) }
 func (p uint16Slice) Less(i, j int) bool { return p[i] < p[j] }
 func (p uint16Slice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
 
-func (s *Server) addNSEC3RR(basename, rootname, qname string, qtype uint16, res *dns.Msg) error {
+func (tx *Tx) addNSEC3RR() error {
   // Map of what possibly exists
   m := map[uint16]struct{}{}
-  for _, rr := range res.Answer {
+  for _, rr := range tx.res.Answer {
     // Definitely exists
     m[rr.Header().Rrtype] = struct{}{}
   }
 
   // If qtype is ANY, the only record types which exist are those we found above.
-  if qtype != dns.TypeANY {
+  if tx.qtype != dns.TypeANY {
     // Any record type which wasn't the one we asked for might exist.
     for _, t := range allPossibleTypes {
-      if t != qtype {
+      if t != tx.qtype {
         m[t] = struct{}{}
       }
     }
@@ -658,12 +733,12 @@ func (s *Server) addNSEC3RR(basename, rootname, qname string, qtype uint16, res 
   // The DNS library is buggy unless tbm is sorted.
   sort.Sort(uint16Slice(tbm))
 
-  log.Info("NSEC3: qname=", qname, "  base=", basename, "  root=", rootname)
-  nsr1n  := dns.HashName(qname, dns.SHA1, 1, "8F")
+  log.Info("NSEC3: qname=", tx.qname, "  base=", tx.basename, "  root=", tx.rootname)
+  nsr1n  := dns.HashName(tx.qname, dns.SHA1, 1, "8F")
   nsr1nn := stepName(nsr1n)
   nsr1   := &dns.NSEC3 {
     Hdr: dns.RR_Header {
-      Name: nsr1n + "." + rootname + ".",
+      Name: nsr1n + "." + tx.rootname + ".",
       Rrtype: dns.TypeNSEC3,
       Class: dns.ClassINET,
       Ttl: 600,
@@ -677,12 +752,12 @@ func (s *Server) addNSEC3RR(basename, rootname, qname string, qtype uint16, res 
     NextDomain: nsr1nn,
     TypeBitMap: tbm,
   }
-  res.Ns = append(res.Ns, nsr1)
+  tx.res.Ns = append(tx.res.Ns, nsr1)
   return nil
 }
 
-func (s *Server) addNSEC(basename, rootname, qname string, qtype uint16, res *dns.Msg) error {
-  if !useDNSSEC(res) {
+func (tx *Tx) addNSEC() error {
+  if !tx.useDNSSEC() {
     return nil
   }
 
@@ -694,9 +769,9 @@ func (s *Server) addNSEC(basename, rootname, qname string, qtype uint16, res *dn
   //   - Wildcard, data response
   //   - Name error response
   //   - Direct NSEC request
-  if len(res.Answer) == 0 /*&& qtype != dns.TypeDS*/ {
+  if len(tx.res.Answer) == 0 /*&& qtype != dns.TypeDS*/ {
     log.Info("adding NSEC3")
-    err := s.addNSEC3RR(basename, rootname, qname, qtype, res)
+    err := tx.addNSEC3RR()
     if err != nil {
       return err
     }
@@ -713,33 +788,43 @@ func (s *Server) addNSEC(basename, rootname, qname string, qtype uint16, res *dn
   return nil
 }
 
-func (s *Server) addAnswersMain(subname, basename, rootname, qname string, qtype uint16, res *dns.Msg) error {
-  if rootname == "" {
+func (tx *Tx) setRcode(x int) {
+  if tx.rcode == 0 {
+    tx.rcode = x
+  }
+}
+
+func (tx *Tx) addAnswersMain() error {
+  if tx.rootname == "" {
+    tx.setRcode(dns.RcodeRefused)
     return ErrNoRoot
   }
 
-  if basename == "x--nmc" {
-    return s.addMetaAnswers(subname, basename, rootname, qtype, res)
+  if tx.basename == "x--nmc" {
+    return tx.addMetaAnswers()
   }
 
-  if subname == "" && basename == "" {
-    err := s.addRootAnswers(rootname, qtype, res)
+  if tx.subname == "" && tx.basename == "" {
+    err := tx.addRootAnswers()
     return err
   }
 
-  ncname, err := toNamecoinName(basename)
+  ncname, err := toNamecoinName(tx.basename)
   if err != nil {
     log.Infoe(err, "cannot determine namecoin name")
     return err
   }
 
-  d, err := s.getNamecoinEntry(ncname)
+  d, err := tx.s.getNamecoinEntry(ncname)
   if err != nil {
     log.Infoe(err, "cannot get namecoin entry")
+    if err == ErrNoSuchDomain {
+      tx.setRcode(dns.RcodeNameError)
+    }
     return err
   }
 
-  err = s.addAnswersUnderDomain(d, subname, basename + "." + rootname + ".", rootname, qtype, res)
+  err = tx.addAnswersUnderDomain(d)
   if err != nil {
     log.Infoe(err, "cannot add answers")
     return err
@@ -748,28 +833,55 @@ func (s *Server) addAnswersMain(subname, basename, rootname, qname string, qtype
   return nil
 }
 
-func (s *Server) addAnswers(qname string, qtype uint16, res *dns.Msg) error {
-  subname, basename, rootname, err := s.determineDomain(qname)
+func (tx *Tx) addAnswersMainOuter() error {
+  err := tx.addAnswersMain()
+
+  if len(tx.res.Answer) == 0 && len(tx.res.Ns) > 0 {
+    tx.res.Authoritative = false
+  }
+
+  // Do not use istype here, we do not want to match ANY
+  if err == nil && !(len(tx.res.Answer) == 0 && tx.qtype == dns.TypeDS) {
+    return nil
+  }
+
+  // If an error occurred, and we have NXDOMAIN, add SOA
+  err2 := tx.addRootSOA()
+  if err2 != nil {
+    // currently, let the first error take precedence
+  }
+
+  return err
+}
+
+func (tx *Tx) addAnswers() error {
+  var err error
+  tx.subname, tx.basename, tx.rootname, err = tx.determineDomain()
   if err != nil {
-    log.Infoe(err, "cannot determine domain name")
+    log.Infoe(err, "cannot determine domain name, refusing")
+    tx.setRcode(dns.RcodeRefused)
     return err
   }
 
-  log.Info("DD: sub=", subname, "  base=", basename, "  root=", rootname)
+  log.Info("DD: sub=", tx.subname, "  base=", tx.basename, "  root=", tx.rootname)
 
-  err = s.addAnswersMain(subname, basename, rootname, qname, qtype, res)
+  err = tx.addAnswersMainOuter()
   if err != nil {
-    return err
+    // eat name errors
+    if err != ErrNoSuchDomain {
+      return err
+    }
   }
 
-  err = s.addNSEC(basename, rootname, qname, qtype, res)
+  err = tx.addNSEC()
   if err != nil {
     log.Infoe(err, "cannot add NSEC")
     return err
   }
 
-  useKSK := (qtype == dns.TypeDNSKEY)
-  err = s.signResponse(res, useKSK, rootname)
+  // XXX
+  useKSK := (tx.qtype == dns.TypeDNSKEY)
+  err = tx.signResponse(useKSK)
   if err != nil {
     log.Infoe(err, "cannot sign response")
     return err
@@ -778,39 +890,60 @@ func (s *Server) addAnswers(qname string, qtype uint16, res *dns.Msg) error {
   return nil
 }
 
-func (s *Server) handle(rw dns.ResponseWriter, req *dns.Msg) {
-  res := dns.Msg{}
-  res.SetReply(req)
-  res.Authoritative = true
-  res.Compress = true
-  opt := req.IsEdns0()
+type Tx struct {
+  req *dns.Msg
+  res *dns.Msg
+  qname  string
+  qtype  uint16
+  qclass uint16
+  s      *Server
+  rcode  int
+
+  subname string  // the subname:  www.bitcoin.bit -> "www", bitcoin.bit -> ""
+  basename string // the basename: bitcoin.bit -> "bitcoin"
+  rootname string // the TLD: bitcoin.bit -> "bit", bitcoin.bit.example.com -> "bit.example.com"
+}
+
+func (s *Server) handle(rw dns.ResponseWriter, reqMsg *dns.Msg) {
+  tx := Tx{}
+  tx.req = reqMsg
+  tx.res = &dns.Msg{}
+  tx.res.SetReply(tx.req)
+  tx.res.Authoritative = true
+  tx.res.Compress = true
+  tx.s = s
+  tx.rcode = 0
+
+  opt := tx.req.IsEdns0()
   if opt != nil {
-    res.Extra = append(res.Extra, opt)
+    tx.res.Extra = append(tx.res.Extra, opt)
   }
 
-  for _, q := range req.Question {
+  for _, q := range tx.req.Question {
+    tx.qname  = strings.ToLower(q.Name)
+    tx.qtype  = q.Qtype
+    tx.qclass = q.Qclass
+
     if q.Qclass != dns.ClassINET && q.Qclass != dns.ClassANY {
       continue
     }
 
-    err := s.addAnswers(q.Name, q.Qtype, &res)
-    if err == ErrNoSuchDomain {
-      res.SetRcode(req, dns.RcodeNameError)
-      break
-    } else if err == ErrNoRoot {
-      res.SetRcode(req, dns.RcodeRefused)
-      break
-    } else if err != nil {
-      // TODO
-      log.Infoe(err, "Could not determine answer for query, doing SERVFAIL.")
-      res.SetRcode(req, dns.RcodeServerFailure)
+    err := tx.addAnswers()
+    if err != nil {
+      if tx.rcode == 0 {
+        log.Infoe(err, "Handler error, doing SERVFAIL")
+        tx.rcode = dns.RcodeServerFailure
+      }
       break
     }
+
   }
 
+  tx.res.SetRcode(tx.req, tx.rcode)
+
   //log.Info("response: ", res.String())
-  err := rw.WriteMsg(&res)
-  log.Infoe(err, "Couldn't write response: " + res.String())
+  err := rw.WriteMsg(tx.res)
+  log.Infoe(err, "Couldn't write response: " + tx.res.String())
 }
 
 func (s *Server) Run() {
