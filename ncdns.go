@@ -298,7 +298,8 @@ func (tx *Tx) addAnswersMain() error {
   var origerr error
   var firsterr error
   nss := []*dns.NS{}
-  var firsttype uint16
+  firstNSAtLen := -1
+  firstSOAAtLen := -1
 
   // We have to find out the zone root by trying to find SOA for progressively shorter domain names.
   norig := strings.TrimRight(tx.qname, ".")
@@ -312,7 +313,6 @@ A:
       origerr = err
     }
     if err == nil { // success
-      gotns := false
       for i := range rrs {
         t := rrs[i].Header().Rrtype
         switch t {
@@ -325,7 +325,9 @@ A:
 
             // We have found a SOA record at this level. This is preferred over everything
             // so we can break now.
-            firsttype = dns.TypeSOA
+            if firstSOAAtLen < 0 {
+              firstSOAAtLen = len(n)
+            }
             break A
 
           case dns.TypeNS:
@@ -334,14 +336,12 @@ A:
             nss = append(nss, rrs[i].(*dns.NS))
 
             // There could also be a SOA record at this level that we haven't reached yet.
-            gotns = true
+            if firstNSAtLen < 0 {
+              firstNSAtLen = len(n)
+            }
 
           default:
         }
-      }
-      if firsttype == 0 && gotns {
-        // We found NSes at this level but not SOA. Looks like we're not authoritative.
-        firsttype = dns.TypeNS
       }
     } else if firsterr == nil {
       firsterr = err
@@ -361,20 +361,19 @@ A:
 
   tx.soa = soa
 
-  // firsttype is now either dns.TypeSOA or dns.TypeNS
-  if firsttype == dns.TypeSOA {
-    // We got a SOA first, so we're not a delegation even if we have NS.
+
+  if firstSOAAtLen >= firstNSAtLen {
+    // We got a SOA and zero or more NSes at the same level; we're not a delegation.
     return tx.addAnswersAuthoritative(origq, origerr)
-  } else if firsttype == dns.TypeNS {
+  } else {
     // We have a delegation.
     return tx.addAnswersDelegation(nss)
-  } else {
-    // This should not be possible.
-    panic("unreachable")
   }
 }
 
 func (tx *Tx) addAnswersAuthoritative(rrs []dns.RR, origerr error) error {
+  log.Info("AUTHORITATIVE")
+
   // A call to blookup either succeeds or fails.
   //
   // If it fails:
@@ -434,6 +433,8 @@ func (tx *Tx) addAnswersCNAME(cn *dns.CNAME) error {
 }
 
 func (tx *Tx) addAnswersDelegation(nss []*dns.NS) error {
+  log.Info("DELEGATION")
+
   if tx.qtype == dns.TypeDS /* don't use istype, must not match ANY */ {
     // If type DS was requested specifically (not ANY), we have to act like
     // we're handling things authoritatively and hand out a consolation SOA
@@ -442,10 +443,9 @@ func (tx *Tx) addAnswersDelegation(nss []*dns.NS) error {
     //
     // If a DS record exists, it's given; if one doesn't, an NSEC record is
     // given.
-    tx.res.Ns = append(tx.res.Ns, tx.soa)
+    tx.consolationSOA = true
+    //tx.res.Ns = append(tx.res.Ns, tx.soa)
   } else {
-    log.Info("TODO: DELEGATION")
-
     // Note that this is not authoritative data and thus does not get signed.
     for _, ns := range nss {
       tx.res.Ns = append(tx.res.Ns, ns)
