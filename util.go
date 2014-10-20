@@ -207,7 +207,7 @@ func (tx *Tx) signResponse() error {
     return nil
   }
 
-  for _, r := range []*[]dns.RR { &tx.res.Answer, &tx.res.Ns, &tx.res.Extra } {
+  for _, r := range []*[]dns.RR { &tx.res.Answer, &tx.res.Ns, /*&tx.res.Extra*/ } {
     err := tx.signResponseSection(r)
     if err != nil {
       log.Infoe(err, "fail signResponse")
