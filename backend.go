@@ -172,7 +172,7 @@ func (tx *Btx) Do() (rrs []dns.RR, err error) {
     return tx.doRootDomain()
   }
 
-  if tx.basename == "x--nmc" {
+  if tx.basename == "x--nmc" && tx.b.s.cfg.SelfName == "" {
     return tx.doMetaDomain()
   }
 
@@ -180,6 +180,11 @@ func (tx *Btx) Do() (rrs []dns.RR, err error) {
 }
 
 func (tx *Btx) doRootDomain() (rrs []dns.RR, err error) {
+  nsname := tx.b.s.cfg.SelfName
+  if nsname == "" {
+    nsname = "this.x--nmc." + tx.rootname
+  }
+
   soa := &dns.SOA {
     Hdr: dns.RR_Header {
       Name: absname(tx.rootname),
@@ -187,7 +192,7 @@ func (tx *Btx) doRootDomain() (rrs []dns.RR, err error) {
       Class: dns.ClassINET,
       Rrtype: dns.TypeSOA,
     },
-    Ns: absname("this.x--nmc." + tx.rootname),
+    Ns: absname(nsname),
     Mbox: ".",
     Serial: 1,
     Refresh: 600,
@@ -203,7 +208,7 @@ func (tx *Btx) doRootDomain() (rrs []dns.RR, err error) {
       Class: dns.ClassINET,
       Rrtype: dns.TypeNS,
     },
-    Ns: absname("this.x--nmc." + tx.rootname),
+    Ns: absname(nsname),
   }
 
   rrs = []dns.RR{ soa, ns, }
