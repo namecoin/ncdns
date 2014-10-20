@@ -46,40 +46,59 @@ func NewServer(cfg *ServerConfig) *Server {
   return s
 }
 
+func (s *Server) loadKey(fn, privateFn string) (k *dns.DNSKEY, privatek dns.PrivateKey, err error) {
+  f, err := os.Open(fn)
+  if err != nil {
+    return
+  }
+
+  rr, err := dns.ReadRR(f, fn)
+  if err != nil {
+    return
+  }
+
+  k, ok := rr.(*dns.DNSKEY)
+  if !ok {
+    err = fmt.Errorf("Loaded record from key file, but it wasn't a DNSKEY")
+    return
+  }
+
+  privatef, err := os.Open(privateFn)
+  if err != nil {
+    return
+  }
+
+  privatek, err = k.ReadPrivateKey(privatef, privateFn)
+  log.Fatale(err)
+
+  return
+}
+
 func (s *Server) Run() {
+  var err error
+
   s.mux = dns.NewServeMux()
   s.mux.HandleFunc(".", s.handle)
 
   // key setup
-  kskf, err := os.Open(s.cfg.PublicKey)
-  log.Fatale(err)
+  s.ksk, s.kskPrivate, err = s.loadKey(s.cfg.PublicKey, s.cfg.PrivateKey)
+  log.Fatale(err, "error reading KSK key")
 
-  kskRR, err := dns.ReadRR(kskf, s.cfg.PublicKey)
-  log.Fatale(err)
+  if s.cfg.ZonePublicKey != "" {
+    s.zsk, s.zskPrivate, err = s.loadKey(s.cfg.ZonePublicKey, s.cfg.ZonePrivateKey)
+    log.Fatale(err, "error reading ZSK key")
+  } else {
+    s.zsk = &dns.DNSKEY{}
+    s.zsk.Hdr.Rrtype = dns.TypeDNSKEY
+    s.zsk.Hdr.Class  = dns.ClassINET
+    s.zsk.Hdr.Ttl    = 3600
+    s.zsk.Algorithm = dns.RSASHA256
+    s.zsk.Protocol = 3
+    s.zsk.Flags = dns.ZONE
 
-  ksk, ok := kskRR.(*dns.DNSKEY)
-  if !ok {
-    log.Fatal("loaded record from key file, but it wasn't a DNSKEY")
-    return
+    s.zskPrivate, err = s.zsk.Generate(2048)
+    log.Fatale(err)
   }
-
-  s.ksk = ksk
-
-  kskPrivatef, err := os.Open(s.cfg.PrivateKey)
-  log.Fatale(err)
-
-  s.kskPrivate, err = s.ksk.ReadPrivateKey(kskPrivatef, s.cfg.PrivateKey)
-  log.Fatale(err)
-
-  s.zsk.Hdr.Rrtype = dns.TypeDNSKEY
-  s.zsk.Hdr.Class  = dns.ClassINET
-  s.zsk.Hdr.Ttl    = 3600
-  s.zsk.Algorithm = dns.RSASHA256
-  s.zsk.Protocol = 3
-  s.zsk.Flags = dns.ZONE
-
-  s.zskPrivate, err = s.zsk.Generate(2048)
-  log.Fatale(err)
 
   s.b, err = NewNCBackend(s)
   log.Fatale(err)
@@ -106,7 +125,7 @@ type Server struct {
   tcpListener *dns.Server
   ksk *dns.DNSKEY
   kskPrivate dns.PrivateKey
-  zsk dns.DNSKEY
+  zsk *dns.DNSKEY
   zskPrivate dns.PrivateKey
   cfg ServerConfig
   b Backend
@@ -114,8 +133,11 @@ type Server struct {
 
 type ServerConfig struct {
   Bind string         `default:":53" usage:"Address to bind to (e.g. 0.0.0.0:53)"`
-  PublicKey string    `default:"ncdns.key" usage:"Path to the DNSKEY public key file"`
-  PrivateKey string   `default:"ncdns.private" usage:"Path to the corresponding private key file"`
+  PublicKey string    `default:"ncdns.key" usage:"Path to the DNSKEY KSK public key file"`
+  PrivateKey string   `default:"ncdns.private" usage:"Path to the KSK's corresponding private key file"`
+  ZonePublicKey string `default:"" usage:"Path to the DNSKEY ZSK public key file; if one is not specified, a temporary one is generated on startup and used only for the duration of that process"`
+  ZonePrivateKey string `default:"" usage:"Path to the ZSK's corresponding private key file"`
+
   NamecoinRPCUsername string `default:"" usage:"Namecoin RPC username"`
   NamecoinRPCPassword string `default:"" usage:"Namecoin RPC password"`
   NamecoinRPCAddress  string `default:"localhost:8336" usage:"Namecoin RPC server address"`
@@ -243,7 +265,7 @@ func (tx *Tx) addAnswers() error {
       tx.s.zsk.Hdr.Name = tx.s.ksk.Hdr.Name
 
       tx.res.Answer = append(tx.res.Answer, tx.s.ksk)
-      tx.res.Answer = append(tx.res.Answer, &tx.s.zsk)
+      tx.res.Answer = append(tx.res.Answer, tx.s.zsk)
 
       // cancel sending a consolation SOA since we're giving DNSKEY answers
       tx.consolationSOA = false
