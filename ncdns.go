@@ -472,7 +472,7 @@ func (tx *Tx) addAnswersDelegation(nss []dns.RR) error {
       t := ns.Header().Rrtype
       if t == dns.TypeDS {
         added = true
-        tx.res.Ns = append(tx.res.Ns, ns)
+        tx.res.Answer = append(tx.res.Answer, ns)
       }
     }
     if added {
