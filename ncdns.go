@@ -154,6 +154,13 @@ type Tx struct {
 
   typesAtQname map[uint16]struct{}
   soa *dns.SOA
+
+  // Add a 'consolation SOA' to the Authority section?
+  // Usually set when there are no results. This has to be done later, because
+  // we add DNSKEYs (if requested) at a later time and need to be able to quash
+  // this at that time in case adding DNSKEYs means an answer has stopped being
+  // empty of results.
+  consolationSOA bool
 }
 
 func (s *Server) handle(rw dns.ResponseWriter, reqMsg *dns.Msg) {
@@ -237,9 +244,17 @@ func (tx *Tx) addAnswers() error {
 
       tx.res.Answer = append(tx.res.Answer, tx.s.ksk)
       tx.res.Answer = append(tx.res.Answer, &tx.s.zsk)
+
+      // cancel sending a consolation SOA since we're giving DNSKEY answers
+      tx.consolationSOA = false
     }
 
     tx.typesAtQname[dns.TypeDNSKEY] = struct{}{}
+  }
+
+  //
+  if tx.consolationSOA && tx.soa != nil {
+    tx.res.Ns = append(tx.res.Ns, tx.soa)
   }
 
   err = tx.addNSEC()
@@ -275,6 +290,7 @@ A:
       origerr = err
     }
     if err == nil { // success
+      gotns := false
       for i := range rrs {
         t := rrs[i].Header().Rrtype
         switch t {
@@ -285,10 +301,9 @@ A:
               soa = rrs[i].(*dns.SOA)
             }
 
-            if firsttype == 0 {
-              firsttype = dns.TypeSOA
-            }
-
+            // We have found a SOA record at this level. This is preferred over everything
+            // so we can break now.
+            firsttype = dns.TypeSOA
             break A
 
           case dns.TypeNS:
@@ -296,12 +311,15 @@ A:
             // We need to return Authority data regardless of the nature of the query.
             nss = append(nss, rrs[i].(*dns.NS))
 
-            if firsttype == 0 {
-              firsttype = dns.TypeNS
-            }
+            // There could also be a SOA record at this level that we haven't reached yet.
+            gotns = true
 
           default:
         }
+      }
+      if firsttype == 0 && gotns {
+        // We found NSes at this level but not SOA. Looks like we're not authoritative.
+        firsttype = dns.TypeNS
       }
     } else if firsterr == nil {
       firsterr = err
@@ -381,8 +399,8 @@ func (tx *Tx) addAnswersAuthoritative(rrs []dns.RR, origerr error) error {
   }
 
   if len(tx.res.Answer) == 0 {
-    // no matching records, hand out the SOA
-    tx.res.Ns = append(tx.res.Ns, tx.soa)
+    // no matching records, hand out the SOA (done later, might be quashed)
+    tx.consolationSOA = true
   }
 
   return nil
