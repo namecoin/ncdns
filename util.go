@@ -133,7 +133,7 @@ func (tx *Tx) signRRs(rra []dns.RR, useKSK bool) (dns.RR, error) {
     Hdr: dns.RR_Header { Ttl: maxttl, },
     Algorithm: dns.RSASHA256,
     Expiration: uint32(now.Add(exp).Unix()),
-    Inception: uint32(now.Unix()),
+    Inception: uint32(now.Add(time.Duration(-10)*time.Minute).Unix()),
     SignerName: absname(tx.soa.Hdr.Name),
   }
   pk := tx.s.zskPrivate
