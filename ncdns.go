@@ -175,7 +175,15 @@ type Tx struct {
   rcode  int
 
   typesAtQname map[uint16]struct{}
+  additionalQueue map[string]struct{}
   soa *dns.SOA
+  delegationPoint string // domain name at which the selected delegation was found
+
+  // The query was made for the selected delegation's name.
+  // i.e., if a lookup a.b.c.d has been made, and b.c.d  has been chosen as the
+  // closest available delegation to serve, this is false. Whereas if b.c.d is
+  // queried, this is true.
+  queryIsAtDelegationPoint bool
 
   // Add a 'consolation SOA' to the Authority section?
   // Usually set when there are no results. This has to be done later, because
@@ -183,6 +191,9 @@ type Tx struct {
   // this at that time in case adding DNSKEYs means an answer has stopped being
   // empty of results.
   consolationSOA bool
+
+  // Don't NSEC for having no answers. Used for qtype==DS.
+  suppressNSEC bool
 }
 
 func (s *Server) handle(rw dns.ResponseWriter, reqMsg *dns.Msg) {
@@ -195,6 +206,7 @@ func (s *Server) handle(rw dns.ResponseWriter, reqMsg *dns.Msg) {
   tx.s = s
   tx.rcode = 0
   tx.typesAtQname = map[uint16]struct{}{}
+  tx.additionalQueue = map[string]struct{}{}
 
   opt := tx.req.IsEdns0()
   if opt != nil {
@@ -284,6 +296,11 @@ func (tx *Tx) addAnswers() error {
     return err
   }
 
+  err = tx.addAdditional()
+  if err != nil {
+    return err
+  }
+
   err = tx.signResponse()
   if err != nil {
     return err
@@ -297,7 +314,7 @@ func (tx *Tx) addAnswersMain() error {
   var origq []dns.RR
   var origerr error
   var firsterr error
-  nss := []*dns.NS{}
+  var nss []dns.RR
   firstNSAtLen := -1
   firstSOAAtLen := -1
 
@@ -333,11 +350,18 @@ A:
           case dns.TypeNS:
             // found an NS on the path; we are not authoritative for this owner or anything under it
             // We need to return Authority data regardless of the nature of the query.
-            nss = append(nss, rrs[i].(*dns.NS))
+            nss = rrs
 
             // There could also be a SOA record at this level that we haven't reached yet.
             if firstNSAtLen < 0 {
               firstNSAtLen = len(n)
+
+              tx.delegationPoint = absname(n)
+              log.Info("DELEGATION POINT: ", tx.delegationPoint)
+
+              if n == norig {
+                tx.queryIsAtDelegationPoint = true
+              }
             }
 
           default:
@@ -360,7 +384,6 @@ A:
   }
 
   tx.soa = soa
-
 
   if firstSOAAtLen >= firstNSAtLen {
     // We got a SOA and zero or more NSes at the same level; we're not a delegation.
@@ -432,10 +455,11 @@ func (tx *Tx) addAnswersCNAME(cn *dns.CNAME) error {
   return nil
 }
 
-func (tx *Tx) addAnswersDelegation(nss []*dns.NS) error {
+func (tx *Tx) addAnswersDelegation(nss []dns.RR) error {
   log.Info("DELEGATION")
 
-  if tx.qtype == dns.TypeDS /* don't use istype, must not match ANY */ {
+  if tx.qtype == dns.TypeDS /* don't use istype, must not match ANY */ &&
+     tx.queryIsAtDelegationPoint {
     // If type DS was requested specifically (not ANY), we have to act like
     // we're handling things authoritatively and hand out a consolation SOA
     // record and NOT hand out NS records. These still go in the Authority
@@ -443,12 +467,33 @@ func (tx *Tx) addAnswersDelegation(nss []*dns.NS) error {
     //
     // If a DS record exists, it's given; if one doesn't, an NSEC record is
     // given.
-    tx.consolationSOA = true
-    //tx.res.Ns = append(tx.res.Ns, tx.soa)
+    added := false
+    for _, ns := range nss {
+      t := ns.Header().Rrtype
+      if t == dns.TypeDS {
+        added = true
+        tx.res.Ns = append(tx.res.Ns, ns)
+      }
+    }
+    if added {
+      tx.suppressNSEC = true
+    } else {
+      tx.consolationSOA = true
+    }
   } else {
     // Note that this is not authoritative data and thus does not get signed.
     for _, ns := range nss {
-      tx.res.Ns = append(tx.res.Ns, ns)
+      t := ns.Header().Rrtype
+      if t == dns.TypeNS || t == dns.TypeDS {
+        tx.res.Ns = append(tx.res.Ns, ns)
+      }
+      if t == dns.TypeNS {
+        ns_ := ns.(*dns.NS)
+        tx.queueAdditional(ns_.Ns)
+      }
+      if t == dns.TypeDS {
+        tx.suppressNSEC = true
+      }
     }
   }
 
@@ -458,8 +503,12 @@ func (tx *Tx) addAnswersDelegation(nss []*dns.NS) error {
   return nil
 }
 
+func (tx *Tx) queueAdditional(name string) {
+  tx.additionalQueue[name] = struct{}{}
+}
+
 func (tx *Tx) addNSEC() error {
-  if !tx.useDNSSEC() {
+  if !tx.useDNSSEC() || tx.suppressNSEC {
     return nil
   }
 
@@ -527,6 +576,32 @@ func (tx *Tx) addNSEC3RRActual(name string, tset map[uint16]struct{}) error {
   }
   tx.res.Ns = append(tx.res.Ns, nsr1)
 
+  return nil
+}
+
+func (tx *Tx) addAdditional() error {
+  for aname := range tx.additionalQueue {
+    err := tx.addAdditionalItem(aname)
+    if err != nil {
+      // eat the error
+      //return err
+    }
+  }
+  return nil
+}
+
+func (tx *Tx) addAdditionalItem(aname string) error {
+  log.Info("ADDITIONAL:  ", aname)
+  rrs, err := tx.blookup(aname)
+  if err != nil {
+    return err
+  }
+  for _, rr := range rrs {
+    t := rr.Header().Rrtype
+    if t == dns.TypeA || t == dns.TypeAAAA {
+      tx.res.Extra = append(tx.res.Extra, rr)
+    }
+  }
   return nil
 }
 

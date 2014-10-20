@@ -176,7 +176,14 @@ func (tx *Btx) Do() (rrs []dns.RR, err error) {
     return tx.doMetaDomain()
   }
 
-  return tx.doUserDomain()
+  rrs, err = tx.doUserDomain()
+
+  log.Info("USER RECORDS YIELDED:")
+  for _, rr := range rrs {
+    log.Info("    ", rr.String())
+  }
+
+  return
 }
 
 func (tx *Btx) doRootDomain() (rrs []dns.RR, err error) {
@@ -273,7 +280,7 @@ func (tx *Btx) doUnderDomain(d *Domain) (rrs []dns.RR, err error) {
 }
 
 func (tx *Btx) addAnswersUnderNCValue(rncv *ncValue, subname string) (rrs []dns.RR, err error) {
-  ncv, sn, err := tx.findNCValue(rncv, subname, hasNS)
+  ncv, sn, err := tx.findNCValue(rncv, subname, nil /*hasNS*/)
   if err != nil {
     return
   }
@@ -428,7 +435,7 @@ func (ncv *ncValue) GetNSs() (nss []string, err error) {
 
 func (ncv *ncValue) GetDSs() (dss []dns.DS, err error) {
   for _, ds := range ncv.DS {
-    log.Info("  - DS: ", ds)
+    //log.Info("  - DS: ", ds)
     if len(ds) != 4 {
       log.Info("  DS is bad len")
       continue
