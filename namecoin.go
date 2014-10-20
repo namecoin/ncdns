@@ -77,8 +77,12 @@ type NamecoinConn struct {
 }
 
 func (nc *NamecoinConn) Query(name string) (v string, err error) {
-  if name == "d/badger" {
+  if name == "d/badger2" {
     v = `{"ns":["ns1.badger.bit","ns2.badger.bit"],"map":{"ns1":{"ip":["1.2.3.4"],"ip6":["::beef:1"]},"ns2":{"ip":["2.3.4.5"],"ip6":["::beef:2"]}},"ds":[[12345,8,2,"lu6y/9mwDNRpTngni179qwqARGVntp9jTaB48NkPAbo="]]}`
+    return
+  }
+  if name == "d/badger" {
+    v = `{"ns":["ns1.badger.bit"],"map":{"ns1":{"ip":["192.99.208.248"]}},"ds":[4015,8,2,"mGW8W55p5JajShyDBvmAdPFOAEcA8IMDzwL0nO5AxAQ="]}`
     return
   }
   if name == "d/secure" {
