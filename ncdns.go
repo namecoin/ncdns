@@ -481,6 +481,8 @@ func (tx *Tx) addAnswersDelegation(nss []dns.RR) error {
       tx.consolationSOA = true
     }
   } else {
+    tx.res.Authoritative = false
+
     // Note that this is not authoritative data and thus does not get signed.
     for _, ns := range nss {
       t := ns.Header().Rrtype
