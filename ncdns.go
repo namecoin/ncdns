@@ -394,11 +394,22 @@ func (tx *Tx) addAnswersCNAME(cn *dns.CNAME) error {
 }
 
 func (tx *Tx) addAnswersDelegation(nss []*dns.NS) error {
-  log.Info("TODO: DELEGATION")
+  if tx.qtype == dns.TypeDS /* don't use istype, must not match ANY */ {
+    // If type DS was requested specifically (not ANY), we have to act like
+    // we're handling things authoritatively and hand out a consolation SOA
+    // record and NOT hand out NS records. These still go in the Authority
+    // section though.
+    //
+    // If a DS record exists, it's given; if one doesn't, an NSEC record is
+    // given.
+    tx.res.Ns = append(tx.res.Ns, tx.soa)
+  } else {
+    log.Info("TODO: DELEGATION")
 
-  // Note that this is not authoritative data and thus does not get signed.
-  for _, ns := range nss {
-    tx.res.Ns = append(tx.res.Ns, ns)
+    // Note that this is not authoritative data and thus does not get signed.
+    for _, ns := range nss {
+      tx.res.Ns = append(tx.res.Ns, ns)
+    }
   }
 
   // Nonauthoritative NS records are still included in the NSEC extant types list
