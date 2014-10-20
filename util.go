@@ -107,16 +107,30 @@ func rerrorf(rcode int, fmts string, args ...interface{}) Error {
   return re
 }
 
+func rraMaxTTL(rra []dns.RR) uint32 {
+  x := uint32(0)
+  for _, rr := range rra {
+    ttl := rr.Header().Ttl
+    if ttl > x {
+      x = ttl
+    }
+  }
+  return x
+}
+
 func (tx *Tx) signRRs(rra []dns.RR, useKSK bool) (dns.RR, error) {
   if len(rra) == 0 {
     return nil, fmt.Errorf("no RRs to such")
   }
 
+  maxttl := rraMaxTTL(rra)
+  exp := time.Duration(maxttl)*time.Second + time.Duration(10)*time.Minute
+
   now := time.Now()
   rrsig := &dns.RRSIG {
-    Hdr: dns.RR_Header { Ttl: rra[0].Header().Ttl, },
+    Hdr: dns.RR_Header { Ttl: maxttl, },
     Algorithm: dns.RSASHA256,
-    Expiration: uint32(now.Add(time.Duration(10)*time.Minute).Unix()),
+    Expiration: uint32(now.Add(exp).Unix()),
     Inception: uint32(now.Unix()),
     SignerName: absname(tx.soa.Hdr.Name),
   }
