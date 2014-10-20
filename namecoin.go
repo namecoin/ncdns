@@ -82,7 +82,7 @@ func (nc *NamecoinConn) Query(name string) (v string, err error) {
     return
   }
   if name == "d/badger" {
-    v = `{"ns":["ns1.badger.bit"],"map":{"ns1":{"ip":["192.99.208.248"]}},"ds":[[4015,8,2,"mGW8W55p5JajShyDBvmAdPFOAEcA8IMDzwL0nO5AxAQ="]]}`
+    v = `{"ns":["ns1.badger.bit"],"map":{"ns1":{"ip":["192.99.208.248"]}},"ds":[[4015,8,1,"zvJorv4AV1it/HukLVw5wc6wtnI="],[4015,8,2,"mGW8W55p5JajShyDBvmAdPFOAEcA8IMDzwL0nO5AxAQ="]]}`
     return
   }
   if name == "d/secure" {
