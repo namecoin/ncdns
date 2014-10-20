@@ -401,6 +401,9 @@ func (tx *Tx) addAnswersDelegation(nss []*dns.NS) error {
     tx.res.Ns = append(tx.res.Ns, ns)
   }
 
+  // Nonauthoritative NS records are still included in the NSEC extant types list
+  tx.typesAtQname[dns.TypeNS] = struct{}{}
+
   return nil
 }
 
@@ -430,15 +433,29 @@ func (tx *Tx) addNSEC() error {
 }
 
 func (tx *Tx) addNSEC3RR() error {
+  // deny the name
+  err := tx.addNSEC3RRActual(tx.qname, tx.typesAtQname)
+  if err != nil {
+    return err
+  }
+
+  // DEVEVER.BIT.
+  // deny DEVEVER.BIT. (DS)
+  // deny *.BIT.
+
+  // deny the existence of a wildcard that could have served the name
+
+  return nil
+}
+
+func (tx *Tx) addNSEC3RRActual(name string, tset map[uint16]struct{}) error {
   tbm := []uint16{}
-  for t, _ := range tx.typesAtQname {
+  for t, _ := range tset {
     tbm = append(tbm, t)
   }
 
-  // The DNS library is buggy unless tbm is sorted.
   sort.Sort(uint16Slice(tbm))
 
-  //log.Info("NSEC3: qname=", tx.qname, "  base=", tx.basename, "  root=", tx.rootname)
   nsr1n  := dns.HashName(tx.qname, dns.SHA1, 1, "8F")
   nsr1nn := stepName(nsr1n)
   nsr1   := &dns.NSEC3 {
@@ -458,6 +475,7 @@ func (tx *Tx) addNSEC3RR() error {
     TypeBitMap: tbm,
   }
   tx.res.Ns = append(tx.res.Ns, nsr1)
+
   return nil
 }
 
