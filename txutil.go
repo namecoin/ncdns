@@ -1,34 +1,10 @@
 package main
 import "encoding/base32"
 import "fmt"
-import "strings"
 import "github.com/miekg/dns"
 import "github.com/hlandau/degoutils/log"
 import "time"
-
-// miekg/dns demands a superflous trailing dot, this makes sure it is correctly appended.
-func absname(n string) string {
-  if n == "" {
-    return "."
-  }
-  if n[len(n)-1] != '.' {
-    return n + "."
-  }
-  return n
-}
-
-// Split a domain name a.b.c.d.e into parts a (the head) and b.c.d.e (the rest).
-func splitDomainHead(name string) (head string, rest string, err error) {
-  parts := strings.Split(name, ".")
-
-  head = parts[len(parts)-1]
-
-  if len(parts) >= 2 {
-    rest = strings.Join(parts[0:len(parts)-1], ".")
-  }
-
-  return
-}
+import "github.com/hlandau/ncdns/util"
 
 // Determines if a transaction should be considered to have the given query type.
 // Returns true iff the query type was qtype or ANY.
@@ -121,7 +97,7 @@ func (tx *Tx) signRRs(rra []dns.RR, useKSK bool) (dns.RR, error) {
     Algorithm: dns.RSASHA256,
     Expiration: uint32(now.Add(exp).Unix()),
     Inception: uint32(now.Add(time.Duration(-10)*time.Minute).Unix()),
-    SignerName: absname(tx.soa.Hdr.Name),
+    SignerName: util.Absname(tx.soa.Hdr.Name),
   }
   pk := tx.s.zskPrivate
   if useKSK {

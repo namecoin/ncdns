@@ -1,4 +1,4 @@
-package main
+package backend
 import "github.com/golang/groupcache/lru"
 import "github.com/miekg/dns"
 import "github.com/hlandau/degoutils/log"
@@ -10,43 +10,62 @@ import "strings"
 import "net"
 import "github.com/hlandau/ncdns/namecoin"
 import "github.com/hlandau/ncdns/ncerr"
-
-type Backend interface {
-  // Lookup all resource records having a given fully-qualified owner name,
-  // regardless of type or class. Returns a slice of all those resource records
-  // or an error.
-  //
-  // The returned slice may contain both authoritative and non-authoritative records
-  // (for example, NS records for delegations and glue records.)
-  //
-  // The existence of wildcard records will be determined by doing a lookup for a name
-  // like "*.example.com", so there is no need to process the wildcard logic other than
-  // to make sure such a lookup functions correctly.
-  Lookup(qname string) (rrs []dns.RR, err error)
-}
+import "github.com/hlandau/ncdns/util"
+import "github.com/hlandau/ncdns/abstract"
 
 type ncBackend struct {
-  s *Server
+  //s *Server
   nc namecoin.NamecoinConn
   cache lru.Cache // items are of type *Domain
+  cfg Config
 }
 
-func NewNCBackend(s *Server) (b *ncBackend, err error) {
-  b = &ncBackend{}
+const (
+  defaultMaxEntries = 100
+)
 
-  b.s = s
+type Config struct {
+  // Username and password to use for connecting to the Namecoin JSON-RPC interface.
+  RPCUsername string
+  RPCPassword string
 
-  b.nc.Username = s.cfg.NamecoinRPCUsername
-  b.nc.Password = s.cfg.NamecoinRPCPassword
-  b.nc.Server   = s.cfg.NamecoinRPCAddress
+  // hostname:port to use for connecting to the Namecoin JSON-RPC interface.
+  RPCAddress string
 
-  b.cache.MaxEntries = b.s.cfg.CacheMaxEntries
+  // Maximum entries to permit in name cache. If zero, a default value is used.
+  CacheMaxEntries int
+
+  // The hostname which should be advertised as the primary nameserver for the zone.
+  // If left empty, a psuedo-hostname resolvable to SelfIP is used.
+  SelfName string
+
+  // Used only if SelfName is left blank. An IP which the internal psuedo-hostname
+  // should resolve to. This should be the public IP of the nameserver serving the
+  // zone expressed by this backend.
+  SelfIP string
+}
+
+// Creates a new Namecoin backend.
+func New(cfg *Config) (backend abstract.Backend, err error) {
+  b := &ncBackend{}
+
+  b.cfg         = *cfg
+  b.nc.Username = cfg.RPCUsername
+  b.nc.Password = cfg.RPCPassword
+  b.nc.Server   = cfg.RPCAddress
+
+  b.cache.MaxEntries = cfg.CacheMaxEntries
+  if b.cache.MaxEntries == 0 {
+    b.cache.MaxEntries = defaultMaxEntries
+  }
+
+  backend = b
 
   return
 }
 
 // Keep domains in DNS format.
-type Domain struct {
+type domain struct {
   ncv *ncValue
 }
 
@@ -59,15 +78,16 @@ type ncValue struct {
   NS      interface{} `json:"ns"`
   Map     map[string]*ncValue `json:"map"` // may contain "" and "*"
   DS      [][]interface{} `json:"ds"`
+  TXT     interface{} `json:"txt"`
 }
 
 func toNamecoinName(basename string) (string, error) {
   return "d/" + basename, nil
 }
 
-func (b *ncBackend) getNamecoinEntry(name string) (*Domain, error) {
+func (b *ncBackend) getNamecoinEntry(name string) (*domain, error) {
   if dd, ok := b.cache.Get(name); ok {
-    d := dd.(*Domain)
+    d := dd.(*domain)
     return d, nil
   }
 
@@ -80,7 +100,7 @@ func (b *ncBackend) getNamecoinEntry(name string) (*Domain, error) {
   return d, nil
 }
 
-func (b *ncBackend) getNamecoinEntryLL(name string) (*Domain, error) {
+func (b *ncBackend) getNamecoinEntryLL(name string) (*domain, error) {
   v, err := b.nc.Query(name)
   if err != nil {
     log.Infoe(err, "namecoin query failed: ", err)
@@ -98,8 +118,8 @@ func (b *ncBackend) getNamecoinEntryLL(name string) (*Domain, error) {
   return d, nil
 }
 
-func (b *ncBackend) jsonToDomain(v string) (dd *Domain, err error) {
-  d := &Domain{}
+func (b *ncBackend) jsonToDomain(v string) (dd *domain, err error) {
+  d := &domain{}
   ncv := &ncValue{}
 
   err = json.Unmarshal([]byte(v), ncv)
@@ -114,14 +134,14 @@ func (b *ncBackend) jsonToDomain(v string) (dd *Domain, err error) {
   return
 }
 
-type Btx struct {
+type btx struct {
   b *ncBackend
   qname string
 
   subname, basename, rootname string
 }
 
-func (tx *Btx) determineDomain() (subname, basename, rootname string, err error) {
+func (tx *btx) determineDomain() (subname, basename, rootname string, err error) {
   qname := tx.qname
   qname = strings.TrimRight(qname, ".")
   parts := strings.Split(qname, ".")
@@ -156,7 +176,7 @@ func (tx *Btx) determineDomain() (subname, basename, rootname string, err error)
   return
 }
 
-func (tx *Btx) Do() (rrs []dns.RR, err error) {
+func (tx *btx) Do() (rrs []dns.RR, err error) {
   tx.subname, tx.basename, tx.rootname, err = tx.determineDomain()
   if err != nil {
     log.Infoe(err, "couldn't determine domain")
@@ -174,7 +194,7 @@ func (tx *Btx) Do() (rrs []dns.RR, err error) {
     return tx.doRootDomain()
   }
 
-  if tx.basename == "x--nmc" && tx.b.s.cfg.SelfName == "" {
+  if tx.basename == "x--nmc" && tx.b.cfg.SelfName == "" {
     return tx.doMetaDomain()
   }
 
@@ -188,20 +208,20 @@ func (tx *Btx) Do() (rrs []dns.RR, err error) {
   return
 }
 
-func (tx *Btx) doRootDomain() (rrs []dns.RR, err error) {
-  nsname := tx.b.s.cfg.SelfName
+func (tx *btx) doRootDomain() (rrs []dns.RR, err error) {
+  nsname := tx.b.cfg.SelfName
   if nsname == "" {
     nsname = "this.x--nmc." + tx.rootname
   }
 
   soa := &dns.SOA {
     Hdr: dns.RR_Header {
-      Name: absname(tx.rootname),
+      Name: util.Absname(tx.rootname),
       Ttl: 86400,
       Class: dns.ClassINET,
       Rrtype: dns.TypeSOA,
     },
-    Ns: absname(nsname),
+    Ns: util.Absname(nsname),
     Mbox: ".",
     Serial: 1,
     Refresh: 600,
@@ -212,20 +232,20 @@ func (tx *Btx) doRootDomain() (rrs []dns.RR, err error) {
 
   ns := &dns.NS {
     Hdr: dns.RR_Header {
-      Name: absname(tx.rootname),
+      Name: util.Absname(tx.rootname),
       Ttl: 86400,
       Class: dns.ClassINET,
       Rrtype: dns.TypeNS,
     },
-    Ns: absname(nsname),
+    Ns: util.Absname(nsname),
   }
 
   rrs = []dns.RR{ soa, ns, }
   return
 }
 
-func (tx *Btx) doMetaDomain() (rrs []dns.RR, err error) {
-  ip := net.ParseIP(tx.b.s.cfg.SelfIP)
+func (tx *btx) doMetaDomain() (rrs []dns.RR, err error) {
+  ip := net.ParseIP(tx.b.cfg.SelfIP)
   if ip == nil || ip.To4() == nil {
     return nil, fmt.Errorf("invalid value specified for SelfIP")
   }
@@ -235,7 +255,7 @@ func (tx *Btx) doMetaDomain() (rrs []dns.RR, err error) {
       rrs = []dns.RR{
         &dns.A{
           Hdr: dns.RR_Header{
-            Name: absname("this." + tx.basename + "." + tx.rootname),
+            Name: util.Absname("this." + tx.basename + "." + tx.rootname),
             Ttl: 86400,
             Class: dns.ClassINET,
             Rrtype: dns.TypeA,
@@ -250,7 +270,7 @@ func (tx *Btx) doMetaDomain() (rrs []dns.RR, err error) {
   return
 }
 
-func (tx *Btx) doUserDomain() (rrs []dns.RR, err error) {
+func (tx *btx) doUserDomain() (rrs []dns.RR, err error) {
   ncname, err := toNamecoinName(tx.basename)
   if err != nil {
     log.Infoe(err, "cannot determine namecoin name")
@@ -272,7 +292,7 @@ func (tx *Btx) doUserDomain() (rrs []dns.RR, err error) {
   return rrs, nil
 }
 
-func (tx *Btx) doUnderDomain(d *Domain) (rrs []dns.RR, err error) {
+func (tx *btx) doUnderDomain(d *domain) (rrs []dns.RR, err error) {
   rrs, err = tx.addAnswersUnderNCValue(d.ncv, tx.subname)
   if err == ncerr.ErrNoResults {
     err = nil
@@ -281,7 +301,7 @@ func (tx *Btx) doUnderDomain(d *Domain) (rrs []dns.RR, err error) {
   return
 }
 
-func (tx *Btx) addAnswersUnderNCValue(rncv *ncValue, subname string) (rrs []dns.RR, err error) {
+func (tx *btx) addAnswersUnderNCValue(rncv *ncValue, subname string) (rrs []dns.RR, err error) {
   ncv, sn, err := tx.findNCValue(rncv, subname, nil /*hasNS*/)
   if err != nil {
     return
@@ -296,11 +316,11 @@ func hasNS(ncv *ncValue) bool {
   return err == nil && len(nss) > 0
 }
 
-func (tx *Btx) findNCValue(ncv *ncValue, subname string, shortCircuitFunc func(curNCV *ncValue) bool) (xncv *ncValue, sn string, err error) {
+func (tx *btx) findNCValue(ncv *ncValue, subname string, shortCircuitFunc func(curNCV *ncValue) bool) (xncv *ncValue, sn string, err error) {
   return tx._findNCValue(ncv, subname, "", 0, shortCircuitFunc)
 }
 
-func (tx *Btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
+func (tx *btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
   shortCircuitFunc func(curNCV *ncValue) bool) (xncv *ncValue, sn string, err error) {
 
   if shortCircuitFunc != nil && shortCircuitFunc(ncv) {
@@ -308,7 +328,7 @@ func (tx *Btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
   }
 
   if isubname != "" {
-    head, rest, err := splitDomainHead(isubname)
+    head, rest, err := util.SplitDomainHead(isubname)
     if err != nil {
       return nil, "", err
     }
@@ -330,7 +350,7 @@ func (tx *Btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
   return ncv, subname, nil
 }
 
-func (tx *Btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.RR, err error) {
+func (tx *btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.RR, err error) {
   // A
   ips, err := ncv.GetIPs()
   if err != nil {
@@ -343,7 +363,7 @@ func (tx *Btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
       continue
     }
     rrs = append(rrs, &dns.A {
-      Hdr: dns.RR_Header { Name: absname(tx.qname), Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 600, },
+      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 600, },
       A: pip })
   }
 
@@ -359,7 +379,7 @@ func (tx *Btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
       continue
     }
     rrs = append(rrs, &dns.AAAA {
-      Hdr: dns.RR_Header { Name: absname(tx.qname), Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 600, },
+      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 600, },
       AAAA: pip })
   }
 
@@ -370,23 +390,35 @@ func (tx *Btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
   }
 
   for _, ns := range nss {
-    ns = absname(ns)
+    ns = util.Absname(ns)
     rrs = append(rrs, &dns.NS {
-      Hdr: dns.RR_Header { Name: absname(tx.qname), Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 600, },
+      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 600, },
       Ns: ns })
   }
 
-  // TODO: TXT
+  // TXT
+  txts, err := ncv.GetTXTs()
+  if err != nil {
+    return
+  }
+
+  for _, txt := range txts {
+    rrs = append(rrs, &dns.TXT {
+      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 600, },
+      Txt: txt })
+  }
+
   // TODO: MX
   // TODO: SRV
 
+  // DS
   dss, err := ncv.GetDSs()
   if err != nil {
     return
   }
 
   for i := range dss {
-    dss[i].Hdr.Name = absname(tx.qname)
+    dss[i].Hdr.Name = util.Absname(tx.qname)
     rrs = append(rrs, &dss[i])
   }
 
@@ -413,7 +445,7 @@ func (ncv *ncValue) getArray(a interface{}) (ips []string, err error) {
       }
     }
   } else {
-    s, ok := ncv.IP.(string)
+    s, ok := a.(string)
     if ok {
       ips = []string{s}
     } else {
@@ -433,6 +465,49 @@ func (ncv *ncValue) GetIP6s() (ips []string, err error) {
 
 func (ncv *ncValue) GetNSs() (nss []string, err error) {
   return ncv.getArray(ncv.NS)
+}
+
+func (ncv *ncValue) getArrayTXT(a interface{}) (txts [][]string, err error) {
+  if a == nil {
+    return
+  }
+
+  if txta, ok := a.([]interface{}); ok {
+    // ["...", "..."] or [["...","..."], ["...","..."]]
+    for _, v := range txta {
+      if sa, ok := v.([]string); ok {
+        // [["...", "..."], ["...","..."]]
+        txts = append(txts, sa)
+      } else if s, ok := v.(string); ok {
+        // ["...", "..."]
+        txts = append(txts, segmentizeTXT(s))
+      } else {
+        err = fmt.Errorf("malformed TXT value")
+        return
+      }
+    }
+  } else {
+    // "..."
+    if s, ok := a.(string); ok {
+      txts = append(txts, segmentizeTXT(s))
+    } else {
+      err = fmt.Errorf("malformed TXT value")
+    }
+  }
+  return
+}
+
+func (ncv *ncValue) GetTXTs() (txts [][]string, err error) {
+  return ncv.getArrayTXT(ncv.TXT)
+}
+
+func segmentizeTXT(txt string) (a []string) {
+  for len(txt) > 255 {
+    a = append(a, txt[0:255])
+    txt = txt[255:]
+  }
+  a = append(a, txt)
+  return
 }
 
 func (ncv *ncValue) GetDSs() (dss []dns.DS, err error) {
@@ -497,7 +572,7 @@ func (ncv *ncValue) GetDSs() (dss []dns.DS, err error) {
 
 // Do low-level queries against an abstract zone file.
 func (b *ncBackend) Lookup(qname string) (rrs []dns.RR, err error) {
-  btx := &Btx{}
+  btx := &btx{}
   btx.b = b
   btx.qname = qname
   return btx.Do()
