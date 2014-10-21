@@ -8,6 +8,8 @@ import "encoding/hex"
 import "fmt"
 import "strings"
 import "net"
+import "github.com/hlandau/ncdns/namecoin"
+import "github.com/hlandau/ncdns/ncerr"
 
 type Backend interface {
   // Lookup all resource records having a given fully-qualified owner name,
@@ -25,7 +27,7 @@ type Backend interface {
 
 type ncBackend struct {
   s *Server
-  nc NamecoinConn
+  nc namecoin.NamecoinConn
   cache lru.Cache // items are of type *Domain
 }
 
@@ -125,7 +127,7 @@ func (tx *Btx) determineDomain() (subname, basename, rootname string, err error)
   parts := strings.Split(qname, ".")
   if len(parts) < 2 {
     if parts[0] != "bit" {
-      err = ErrNotInZone
+      err = ncerr.ErrNotInZone
       return
     }
 
@@ -150,7 +152,7 @@ func (tx *Btx) determineDomain() (subname, basename, rootname string, err error)
     }
   }
 
-  err = ErrNotInZone
+  err = ncerr.ErrNotInZone
   return
 }
 
@@ -165,7 +167,7 @@ func (tx *Btx) Do() (rrs []dns.RR, err error) {
 
   if tx.rootname == "" {
     // REFUSED
-    return nil, ErrNotInZone
+    return nil, ncerr.ErrNotInZone
   }
 
   if tx.subname == "" && tx.basename == "" {
@@ -272,7 +274,7 @@ func (tx *Btx) doUserDomain() (rrs []dns.RR, err error) {
 
 func (tx *Btx) doUnderDomain(d *Domain) (rrs []dns.RR, err error) {
   rrs, err = tx.addAnswersUnderNCValue(d.ncv, tx.subname)
-  if err == ErrNoResults {
+  if err == ncerr.ErrNoResults {
     err = nil
   }
 
@@ -315,14 +317,14 @@ func (tx *Btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
     if !ok {
       sub, ok = ncv.Map["*"]
       if !ok {
-        return nil, "", ErrNoSuchDomain
+        return nil, "", ncerr.ErrNoSuchDomain
       }
     }
     return tx._findNCValue(sub, rest, head + "." + subname, depth+1, shortCircuitFunc)
   }
 
   if shortCircuitFunc != nil {
-    return nil, subname, ErrNoSuchDomain
+    return nil, subname, ncerr.ErrNoSuchDomain
   }
 
   return ncv, subname, nil
@@ -492,16 +494,6 @@ func (ncv *ncValue) GetDSs() (dss []dns.DS, err error) {
 // f[c]("a.b", "c.d.e.f.g.zzz.bit")
 // f[b]("a", "b.c.d.e.f.g.zzz.bit")
 // f[a]("", "a.b.c.d.e.f.g.zzz.bit")
-
-func absname(n string) string {
-  if n == "" {
-    return "."
-  }
-  if n[len(n)-1] != '.' {
-    return n + "."
-  }
-  return n
-}
 
 // Do low-level queries against an abstract zone file.
 func (b *ncBackend) Lookup(qname string) (rrs []dns.RR, err error) {

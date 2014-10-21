@@ -8,6 +8,7 @@ import "fmt"
 import "strings"
 import "sort"
 import "github.com/hlandau/degoutils/config"
+import "github.com/hlandau/ncdns/ncerr"
 
 // A Go daemon to serve Namecoin domain records via DNS.
 // This daemon is intended to be used in one of the following situations:
@@ -161,10 +162,6 @@ func (s *Server) runListener(net string) *dns.Server {
   return ds
 }
 
-var ErrNoSuchDomain = rerrorf(dns.RcodeNameError, "no such domain")
-var ErrNotInZone = rerrorf(dns.RcodeRefused, "domain not in zone")
-var ErrNoResults = rerrorf(0, "no results")
-
 type Tx struct {
   req *dns.Msg
   res *dns.Msg
@@ -224,9 +221,9 @@ func (s *Server) handle(rw dns.ResponseWriter, reqMsg *dns.Msg) {
 
     err := tx.addAnswers()
     if err != nil {
-      if err == ErrNoResults {
+      if err == ncerr.ErrNoResults {
         tx.rcode = 0
-      } else if err == ErrNoSuchDomain {
+      } else if err == ncerr.ErrNoSuchDomain {
         tx.rcode = dns.RcodeNameError
       } else if tx.rcode == 0 {
         log.Infoe(err, "Handler error, doing SERVFAIL")
@@ -248,7 +245,7 @@ func (tx *Tx) blookup(qname string) (rrs []dns.RR, err error) {
   log.Info("blookup: ", qname)
   rrs, err = tx.s.b.Lookup(qname)
   if err == nil && len(rrs) == 0 {
-    err = ErrNoResults
+    err = ncerr.ErrNoResults
   }
   return
 }
@@ -380,7 +377,7 @@ A:
 
   if soa == nil {
     // If we didn't even get a SOA at any point, we don't have any appropriate zone for this query.
-    return ErrNotInZone
+    return ncerr.ErrNotInZone
   }
 
   tx.soa = soa

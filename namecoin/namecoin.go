@@ -1,10 +1,14 @@
-package main
+package namecoin
+
+// btcjson had to be modified a bit to get correct error reporting.
 import "github.com/hlandauf/btcjson"
+import "github.com/hlandau/ncdns/ncerr"
+
 import "encoding/json"
 import "sync/atomic"
 import "fmt"
-//import "github.com/hlandau/degoutils/log"
 
+// Used for generating IDs for JSON-RPC requests.
 var idCounter int32 = 0
 
 func newID() int32 {
@@ -108,7 +112,7 @@ func (nc *NamecoinConn) Query(name string) (v string, err error) {
   if r.Error != nil {
     //log.Info("RPC error: ", r.Error)
     if r.Error.Code == -4 {
-        return "", ErrNoSuchDomain
+        return "", ncerr.ErrNoSuchDomain
     }
     return "", r.Error
   }

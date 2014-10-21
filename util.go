@@ -6,6 +6,18 @@ import "github.com/miekg/dns"
 import "github.com/hlandau/degoutils/log"
 import "time"
 
+// miekg/dns demands a superflous trailing dot, this makes sure it is correctly appended.
+func absname(n string) string {
+  if n == "" {
+    return "."
+  }
+  if n[len(n)-1] != '.' {
+    return n + "."
+  }
+  return n
+}
+
+// Split a domain name a.b.c.d.e into parts a (the head) and b.c.d.e (the rest).
 func splitDomainHead(name string) (head string, rest string, err error) {
   parts := strings.Split(name, ".")
 
@@ -18,32 +30,25 @@ func splitDomainHead(name string) (head string, rest string, err error) {
   return
 }
 
-// unused
-func splitDomainName(name string) (parts []string) {
-  if len(name) == 0 {
-    return
-  }
-
-  if name[len(name)-1] == '.' {
-    name = name[0:len(name)-1]
-  }
-
-  parts = strings.Split(name, ".")
-
-  return
+// Determines if a transaction should be considered to have the given query type.
+// Returns true iff the query type was qtype or ANY.
+func (tx *Tx) istype(qtype uint16) bool {
+  return tx.qtype == qtype || tx.qtype == dns.TypeANY
 }
 
-func (tx *Tx) istype(x uint16) bool {
-  return tx.qtype == x || tx.qtype == dns.TypeANY
-}
-
-func stepName(n string) string {
-  if len(n) == 0 {
+// This is used in NSEC3 hash generation. A hash like ...decafbad has one added
+// to it so that it becomes ...decafbae. This is needed because NSEC3's hashes
+// are inclusive-exclusive (i.e. "[,)"), and we want a hash that covers only the
+// name specified.
+//
+// Takes a hash in base32hex form.
+func stepName(hashB32Hex string) string {
+  if len(hashB32Hex) == 0 {
     return ""
   }
 
-  b, err := base32.HexEncoding.DecodeString(n)
-  log.Panice(err, n)
+  b, err := base32.HexEncoding.DecodeString(hashB32Hex)
+  log.Panice(err, hashB32Hex)
 
   for i := len(b)-1; i>=0; i-- {
     b[i] += 1
@@ -55,8 +60,8 @@ func stepName(n string) string {
   return base32.HexEncoding.EncodeToString(b)
 }
 
+// Returns true iff a type should be covered by a RRSIG.
 func shouldSignType(t uint16, isAuthoritySection bool) bool {
-  //log.Info("shouldSignType ", t, " ", isAuthoritySection)
   switch t {
     case dns.TypeOPT:
       return false
@@ -67,6 +72,7 @@ func shouldSignType(t uint16, isAuthoritySection bool) bool {
   }
 }
 
+// Returns true iff a client requested DNSSEC.
 func (tx *Tx) useDNSSEC() bool {
   opt := tx.req.IsEdns0()
   if opt == nil {
@@ -75,38 +81,18 @@ func (tx *Tx) useDNSSEC() bool {
   return opt.Do()
 }
 
+// Sets an rcode for the response if there is no error rcode currently set for
+// the response. The idea is to return the rcode corresponding to the first
+// error which occurs.
 func (tx *Tx) setRcode(x int) {
   if tx.rcode == 0 {
     tx.rcode = x
   }
 }
 
-type Error interface {
-  error
-  Rcode() int
-}
 
-type Rerr struct {
-  error
-  e error
-  rcode int
-}
-
-func (re *Rerr) Error() string {
-  return re.e.Error()
-}
-
-func (re *Rerr) Rcode() int {
-  return re.rcode
-}
-
-func rerrorf(rcode int, fmts string, args ...interface{}) Error {
-  re := &Rerr{}
-  re.e = fmt.Errorf(fmts, args...)
-  re.rcode = rcode
-  return re
-}
-
+// Determines the maximum TTL for a slice of resource records.
+// Returns 0 if the slice is empty.
 func rraMaxTTL(rra []dns.RR) uint32 {
   x := uint32(0)
   for _, rr := range rra {
@@ -118,6 +104,7 @@ func rraMaxTTL(rra []dns.RR) uint32 {
   return x
 }
 
+// Used by signResponseSection.
 func (tx *Tx) signRRs(rra []dns.RR, useKSK bool) (dns.RR, error) {
   if len(rra) == 0 {
     return nil, fmt.Errorf("no RRs to such")
@@ -152,6 +139,7 @@ func (tx *Tx) signRRs(rra []dns.RR, useKSK bool) (dns.RR, error) {
   return rrsig, nil
 }
 
+// Used by signResponse.
 func (tx *Tx) signResponseSection(rra *[]dns.RR) error {
   if len(*rra) == 0 {
     return nil
@@ -202,6 +190,8 @@ func (tx *Tx) signResponseSection(rra *[]dns.RR) error {
   return nil
 }
 
+// This is called to append RRSIGs to the response based on the current records in the Answer and
+// Authority sections of the response. Records in the Additional section are not signed.
 func (tx *Tx) signResponse() error {
   if !tx.useDNSSEC() {
     return nil
@@ -219,6 +209,7 @@ func (tx *Tx) signResponse() error {
   return nil
 }
 
+// Used for sorting RRTYPE lists for encoding into type bit maps.
 type uint16Slice []uint16
 func (p uint16Slice) Len() int { return len(p) }
 func (p uint16Slice) Less(i, j int) bool { return p[i] < p[j] }
