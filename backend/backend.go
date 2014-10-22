@@ -9,11 +9,10 @@ import "fmt"
 import "strings"
 import "net"
 import "github.com/hlandau/ncdns/namecoin"
-import "github.com/hlandau/ncdns/ncerr"
+import "github.com/hlandau/madns/merr"
 import "github.com/hlandau/ncdns/util"
-import "github.com/hlandau/ncdns/abstract"
 
-type ncBackend struct {
+type Backend struct {
   //s *Server
   nc namecoin.NamecoinConn
   cache lru.Cache // items are of type *Domain
@@ -46,8 +45,8 @@ type Config struct {
 }
 
 // Creates a new Namecoin backend.
-func New(cfg *Config) (backend abstract.Backend, err error) {
-  b := &ncBackend{}
+func New(cfg *Config) (backend *Backend, err error) {
+  b := &Backend{}
 
   b.cfg         = *cfg
   b.nc.Username = cfg.RPCUsername
@@ -85,7 +84,7 @@ func toNamecoinName(basename string) (string, error) {
   return "d/" + basename, nil
 }
 
-func (b *ncBackend) getNamecoinEntry(name string) (*domain, error) {
+func (b *Backend) getNamecoinEntry(name string) (*domain, error) {
   if dd, ok := b.cache.Get(name); ok {
     d := dd.(*domain)
     return d, nil
@@ -100,7 +99,7 @@ func (b *ncBackend) getNamecoinEntry(name string) (*domain, error) {
   return d, nil
 }
 
-func (b *ncBackend) getNamecoinEntryLL(name string) (*domain, error) {
+func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
   v, err := b.nc.Query(name)
   if err != nil {
     log.Infoe(err, "namecoin query failed: ", err)
@@ -118,7 +117,7 @@ func (b *ncBackend) getNamecoinEntryLL(name string) (*domain, error) {
   return d, nil
 }
 
-func (b *ncBackend) jsonToDomain(v string) (dd *domain, err error) {
+func (b *Backend) jsonToDomain(v string) (dd *domain, err error) {
   d := &domain{}
   ncv := &ncValue{}
 
@@ -135,7 +134,7 @@ func (b *ncBackend) jsonToDomain(v string) (dd *domain, err error) {
 }
 
 type btx struct {
-  b *ncBackend
+  b *Backend
   qname string
 
   subname, basename, rootname string
@@ -147,7 +146,7 @@ func (tx *btx) determineDomain() (subname, basename, rootname string, err error)
   parts := strings.Split(qname, ".")
   if len(parts) < 2 {
     if parts[0] != "bit" {
-      err = ncerr.ErrNotInZone
+      err = merr.ErrNotInZone
       return
     }
 
@@ -172,7 +171,7 @@ func (tx *btx) determineDomain() (subname, basename, rootname string, err error)
     }
   }
 
-  err = ncerr.ErrNotInZone
+  err = merr.ErrNotInZone
   return
 }
 
@@ -187,7 +186,7 @@ func (tx *btx) Do() (rrs []dns.RR, err error) {
 
   if tx.rootname == "" {
     // REFUSED
-    return nil, ncerr.ErrNotInZone
+    return nil, merr.ErrNotInZone
   }
 
   if tx.subname == "" && tx.basename == "" {
@@ -294,7 +293,7 @@ func (tx *btx) doUserDomain() (rrs []dns.RR, err error) {
 
 func (tx *btx) doUnderDomain(d *domain) (rrs []dns.RR, err error) {
   rrs, err = tx.addAnswersUnderNCValue(d.ncv, tx.subname)
-  if err == ncerr.ErrNoResults {
+  if err == merr.ErrNoResults {
     err = nil
   }
 
@@ -337,14 +336,14 @@ func (tx *btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
     if !ok {
       sub, ok = ncv.Map["*"]
       if !ok {
-        return nil, "", ncerr.ErrNoSuchDomain
+        return nil, "", merr.ErrNoSuchDomain
       }
     }
     return tx._findNCValue(sub, rest, head + "." + subname, depth+1, shortCircuitFunc)
   }
 
   if shortCircuitFunc != nil {
-    return nil, subname, ncerr.ErrNoSuchDomain
+    return nil, subname, merr.ErrNoSuchDomain
   }
 
   return ncv, subname, nil
@@ -571,7 +570,7 @@ func (ncv *ncValue) GetDSs() (dss []dns.DS, err error) {
 // f[a]("", "a.b.c.d.e.f.g.zzz.bit")
 
 // Do low-level queries against an abstract zone file.
-func (b *ncBackend) Lookup(qname string) (rrs []dns.RR, err error) {
+func (b *Backend) Lookup(qname string) (rrs []dns.RR, err error) {
   btx := &btx{}
   btx.b = b
   btx.qname = qname

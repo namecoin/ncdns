@@ -2,7 +2,7 @@ package namecoin
 
 // btcjson had to be modified a bit to get correct error reporting.
 import "github.com/hlandauf/btcjson"
-import "github.com/hlandau/ncdns/ncerr"
+import "github.com/hlandau/madns/merr"
 import "github.com/hlandau/ncdns/namecoin/extratypes"
 
 import "sync/atomic"
@@ -58,7 +58,7 @@ func (nc *NamecoinConn) Query(name string) (v string, err error) {
   if r.Error != nil {
     //log.Info("RPC error: ", r.Error)
     if r.Error.Code == -4 {
-        return "", ncerr.ErrNoSuchDomain
+        return "", merr.ErrNoSuchDomain
     }
     return "", r.Error
   }
