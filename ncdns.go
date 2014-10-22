@@ -11,7 +11,6 @@ import "github.com/hlandau/degoutils/config"
 import "github.com/hlandau/ncdns/ncerr"
 import "github.com/hlandau/ncdns/abstract"
 import "github.com/hlandau/ncdns/backend"
-import "github.com/hlandau/ncdns/util"
 
 // A Go daemon to serve Namecoin domain records via DNS.
 // This daemon is intended to be used in one of the following situations:
@@ -365,7 +364,7 @@ A:
             if firstNSAtLen < 0 {
               firstNSAtLen = len(n)
 
-              tx.delegationPoint = util.Absname(n)
+              tx.delegationPoint = dns.Fqdn(n)
               log.Info("DELEGATION POINT: ", tx.delegationPoint)
 
               if n == norig {
@@ -571,7 +570,7 @@ func (tx *Tx) addNSEC3RRActual(name string, tset map[uint16]struct{}) error {
   nsr1nn := stepName(nsr1n)
   nsr1   := &dns.NSEC3 {
     Hdr: dns.RR_Header {
-      Name: util.Absname(nsr1n + "." + tx.soa.Hdr.Name),
+      Name: dns.Fqdn(nsr1n + "." + tx.soa.Hdr.Name),
       Rrtype: dns.TypeNSEC3,
       Class: dns.ClassINET,
       Ttl: 600,

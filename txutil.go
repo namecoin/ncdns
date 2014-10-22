@@ -4,7 +4,6 @@ import "fmt"
 import "github.com/miekg/dns"
 import "github.com/hlandau/degoutils/log"
 import "time"
-import "github.com/hlandau/ncdns/util"
 
 // Determines if a transaction should be considered to have the given query type.
 // Returns true iff the query type was qtype or ANY.
@@ -97,7 +96,7 @@ func (tx *Tx) signRRs(rra []dns.RR, useKSK bool) (dns.RR, error) {
     Algorithm: dns.RSASHA256,
     Expiration: uint32(now.Add(exp).Unix()),
     Inception: uint32(now.Add(time.Duration(-10)*time.Minute).Unix()),
-    SignerName: util.Absname(tx.soa.Hdr.Name),
+    SignerName: dns.Fqdn(tx.soa.Hdr.Name),
   }
   pk := tx.s.zskPrivate
   if useKSK {

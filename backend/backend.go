@@ -216,12 +216,12 @@ func (tx *btx) doRootDomain() (rrs []dns.RR, err error) {
 
   soa := &dns.SOA {
     Hdr: dns.RR_Header {
-      Name: util.Absname(tx.rootname),
+      Name: dns.Fqdn(tx.rootname),
       Ttl: 86400,
       Class: dns.ClassINET,
       Rrtype: dns.TypeSOA,
     },
-    Ns: util.Absname(nsname),
+    Ns: dns.Fqdn(nsname),
     Mbox: ".",
     Serial: 1,
     Refresh: 600,
@@ -232,12 +232,12 @@ func (tx *btx) doRootDomain() (rrs []dns.RR, err error) {
 
   ns := &dns.NS {
     Hdr: dns.RR_Header {
-      Name: util.Absname(tx.rootname),
+      Name: dns.Fqdn(tx.rootname),
       Ttl: 86400,
       Class: dns.ClassINET,
       Rrtype: dns.TypeNS,
     },
-    Ns: util.Absname(nsname),
+    Ns: dns.Fqdn(nsname),
   }
 
   rrs = []dns.RR{ soa, ns, }
@@ -255,7 +255,7 @@ func (tx *btx) doMetaDomain() (rrs []dns.RR, err error) {
       rrs = []dns.RR{
         &dns.A{
           Hdr: dns.RR_Header{
-            Name: util.Absname("this." + tx.basename + "." + tx.rootname),
+            Name: dns.Fqdn("this." + tx.basename + "." + tx.rootname),
             Ttl: 86400,
             Class: dns.ClassINET,
             Rrtype: dns.TypeA,
@@ -363,7 +363,7 @@ func (tx *btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
       continue
     }
     rrs = append(rrs, &dns.A {
-      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 600, },
+      Hdr: dns.RR_Header { Name: dns.Fqdn(tx.qname), Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 600, },
       A: pip })
   }
 
@@ -379,7 +379,7 @@ func (tx *btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
       continue
     }
     rrs = append(rrs, &dns.AAAA {
-      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 600, },
+      Hdr: dns.RR_Header { Name: dns.Fqdn(tx.qname), Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 600, },
       AAAA: pip })
   }
 
@@ -390,9 +390,9 @@ func (tx *btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
   }
 
   for _, ns := range nss {
-    ns = util.Absname(ns)
+    ns = dns.Fqdn(ns)
     rrs = append(rrs, &dns.NS {
-      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 600, },
+      Hdr: dns.RR_Header { Name: dns.Fqdn(tx.qname), Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 600, },
       Ns: ns })
   }
 
@@ -404,7 +404,7 @@ func (tx *btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
 
   for _, txt := range txts {
     rrs = append(rrs, &dns.TXT {
-      Hdr: dns.RR_Header { Name: util.Absname(tx.qname), Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 600, },
+      Hdr: dns.RR_Header { Name: dns.Fqdn(tx.qname), Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 600, },
       Txt: txt })
   }
 
@@ -418,7 +418,7 @@ func (tx *btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.
   }
 
   for i := range dss {
-    dss[i].Hdr.Name = util.Absname(tx.qname)
+    dss[i].Hdr.Name = dns.Fqdn(tx.qname)
     rrs = append(rrs, &dss[i])
   }
 
