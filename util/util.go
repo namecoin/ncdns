@@ -13,3 +13,5 @@ func SplitDomainHead(name string) (head string, rest string, err error) {
 
   return
 }
+
+// © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later

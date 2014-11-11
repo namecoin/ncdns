@@ -63,3 +63,5 @@ func replyParser(m json.RawMessage) (interface{}, error) {
 func init() {
   btcjson.RegisterCustomCmd("name_show", nil, replyParser, "name_show <name>")
 }
+
+// © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later
