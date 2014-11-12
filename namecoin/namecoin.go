@@ -27,23 +27,6 @@ type NamecoinConn struct {
 // If the domain exists, returns the value stored in Namecoin, which should be JSON.
 // Note that this will return domain data even if the domain is expired.
 func (nc *NamecoinConn) Query(name string) (v string, err error) {
-  if name == "d/badger2" {
-    v = `{"ns":["ns1.badger.bit","ns2.badger.bit"],"map":{"ns1":{"ip":["1.2.3.4"],"ip6":["::beef:1"]},"ns2":{"ip":["2.3.4.5"],"ip6":["::beef:2"]}},"ds":[[12345,8,2,"lu6y/9mwDNRpTngni179qwqARGVntp9jTaB48NkPAbo="]]}`
-    return
-  }
-  if name == "d/badger" {
-    v = `{"ns":["ns1.badger.bit.genoq.org"],"map":{"ns1":{"ip":["192.99.208.248"]}},"ds":[[4015,8,1,"zvJorv4AV1it/HukLVw5wc6wtnI="],[4015,8,2,"mGW8W55p5JajShyDBvmAdPFOAEcA8IMDzwL0nO5AxAQ="]]}`
-    return
-  }
-  if name == "d/secure" {
-    v = `{"ns":["ns1.example.com","ns2.example.com"],"ds":[[12345,8,2,"lu6y/9mwDNRpTngni179qwqARGVntp9jTaB48NkPAbo="]]}`
-    return
-  }
-  if name == "d/insecure" {
-    v = `{"ns":["ns1.example.com","ns2.example.com"]}`
-    return
-  }
-
   cmd, err := extratypes.NewNameShowCmd(newID(), name)
   if err != nil {
     //log.Info("NC NEWCMD ", err)

@@ -44,6 +44,7 @@ func NewServer(cfg *ServerConfig) (s *Server, err error) {
   bcfg := &backend.Config {
     RPCUsername: cfg.NamecoinRPCUsername,
     RPCPassword: cfg.NamecoinRPCPassword,
+    RPCAddress: cfg.NamecoinRPCAddress,
     CacheMaxEntries: cfg.CacheMaxEntries,
     SelfName: cfg.SelfName,
     SelfIP: cfg.SelfIP,

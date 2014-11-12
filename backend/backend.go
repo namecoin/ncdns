@@ -11,11 +11,13 @@ import "net"
 import "github.com/hlandau/ncdns/namecoin"
 import "github.com/hlandau/madns/merr"
 import "github.com/hlandau/ncdns/util"
+import "sync"
 
 type Backend struct {
   //s *Server
   nc namecoin.NamecoinConn
   cache lru.Cache // items are of type *Domain
+  cacheMutex sync.Mutex
   cfg Config
 }
 
@@ -85,6 +87,9 @@ func toNamecoinName(basename string) (string, error) {
 }
 
 func (b *Backend) getNamecoinEntry(name string) (*domain, error) {
+  b.cacheMutex.Lock()
+  defer b.cacheMutex.Unlock()
+
   if dd, ok := b.cache.Get(name); ok {
     d := dd.(*domain)
     return d, nil
