@@ -87,11 +87,8 @@ func toNamecoinName(basename string) (string, error) {
 }
 
 func (b *Backend) getNamecoinEntry(name string) (*domain, error) {
-  b.cacheMutex.Lock()
-  defer b.cacheMutex.Unlock()
-
-  if dd, ok := b.cache.Get(name); ok {
-    d := dd.(*domain)
+  d := b.getNamecoinEntryCache(name)
+  if d != nil {
     return d, nil
   }
 
@@ -100,8 +97,27 @@ func (b *Backend) getNamecoinEntry(name string) (*domain, error) {
     return nil, err
   }
 
-  b.cache.Add(name, d)
+  b.addNamecoinEntryToCache(name, d)
   return d, nil
+}
+
+func (b *Backend) getNamecoinEntryCache(name string) *domain {
+  b.cacheMutex.Lock()
+  defer b.cacheMutex.Unlock()
+
+  if dd, ok := b.cache.Get(name); ok {
+    d := dd.(*domain)
+    return d
+  }
+
+  return nil
+}
+
+func (b *Backend) addNamecoinEntryToCache(name string, d *domain) {
+  b.cacheMutex.Lock()
+  defer b.cacheMutex.Unlock()
+
+  b.cache.Add(name, d)
 }
 
 func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
