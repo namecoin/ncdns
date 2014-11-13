@@ -9,7 +9,7 @@ import "sync/atomic"
 import "fmt"
 
 // Used for generating IDs for JSON-RPC requests.
-var idCounter int32 = 0
+var idCounter int32
 
 func newID() int32 {
 	return atomic.AddInt32(&idCounter, 1)
@@ -17,7 +17,7 @@ func newID() int32 {
 
 // Used to query a Namecoin JSON-RPC interface. Initialize the struct with a
 // username, password, and address (hostname:port).
-type NamecoinConn struct {
+type Conn struct {
 	Username string
 	Password string
 	Server   string
@@ -26,7 +26,7 @@ type NamecoinConn struct {
 // Query the Namecoin daemon for a Namecoin domain (e.g. d/example).
 // If the domain exists, returns the value stored in Namecoin, which should be JSON.
 // Note that this will return domain data even if the domain is expired.
-func (nc *NamecoinConn) Query(name string) (v string, err error) {
+func (nc *Conn) Query(name string) (v string, err error) {
 	cmd, err := extratypes.NewNameShowCmd(newID(), name)
 	if err != nil {
 		//log.Info("NC NEWCMD ", err)
@@ -54,10 +54,10 @@ func (nc *NamecoinConn) Query(name string) (v string, err error) {
 	if nsr, ok := r.Result.(*extratypes.NameShowReply); ok {
 		//log.Info("NC OK")
 		return nsr.Value, nil
-	} else {
-		//log.Info("NC BADREPLY")
-		return "", fmt.Errorf("bad reply")
 	}
+
+	//log.Info("NC BADREPLY")
+	return "", fmt.Errorf("bad reply")
 }
 
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later

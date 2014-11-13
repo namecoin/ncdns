@@ -14,9 +14,10 @@ import "github.com/hlandau/madns/merr"
 import "github.com/hlandau/ncdns/util"
 import "sync"
 
+// Provides an abstract zone file for the Namecoin .bit TLD.
 type Backend struct {
 	//s *Server
-	nc         namecoin.NamecoinConn
+	nc         namecoin.Conn
 	cache      lru.Cache // items are of type *Domain
 	cacheMutex sync.Mutex
 	cfg        Config
@@ -26,6 +27,7 @@ const (
 	defaultMaxEntries = 100
 )
 
+// Backend configuration.
 type Config struct {
 	// Username and password to use for connecting to the Namecoin JSON-RPC interface.
 	RPCUsername string
