@@ -21,8 +21,8 @@ type Server struct {
 
 type ServerConfig struct {
 	Bind           string `default:":53" usage:"Address to bind to (e.g. 0.0.0.0:53)"`
-	PublicKey      string `default:"ncdns.key" usage:"Path to the DNSKEY KSK public key file"`
-	PrivateKey     string `default:"ncdns.private" usage:"Path to the KSK's corresponding private key file"`
+	PublicKey      string `default:"" usage:"Path to the DNSKEY KSK public key file"`
+	PrivateKey     string `default:"" usage:"Path to the KSK's corresponding private key file"`
 	ZonePublicKey  string `default:"" usage:"Path to the DNSKEY ZSK public key file; if one is not specified, a temporary one is generated on startup and used only for the duration of that process"`
 	ZonePrivateKey string `default:"" usage:"Path to the ZSK's corresponding private key file"`
 
