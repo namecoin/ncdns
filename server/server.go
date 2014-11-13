@@ -55,35 +55,33 @@ func NewServer(cfg *ServerConfig) (s *Server, err error) {
     return
   }
 
-  // key setup
-  ksk, kskPrivate, err := s.loadKey(cfg.PublicKey, cfg.PrivateKey)
-  log.Fatale(err, "error reading KSK key")
-
-  var zsk *dns.DNSKEY
-  var zskPrivate dns.PrivateKey
-
-  if cfg.ZonePublicKey != "" {
-    zsk, zskPrivate, err = s.loadKey(cfg.ZonePublicKey, cfg.ZonePrivateKey)
-    log.Fatale(err, "error reading ZSK key")
-  } else {
-    zsk = &dns.DNSKEY{}
-    zsk.Hdr.Rrtype = dns.TypeDNSKEY
-    zsk.Hdr.Class  = dns.ClassINET
-    zsk.Hdr.Ttl    = 3600
-    zsk.Algorithm = dns.RSASHA256
-    zsk.Protocol = 3
-    zsk.Flags = dns.ZONE
-
-    zskPrivate, err = zsk.Generate(2048)
-    log.Fatale(err)
+  ecfg := &madns.EngineConfig{
+    Backend: b,
   }
 
-  ecfg := &madns.EngineConfig {
-    Backend: b,
-    KSK: ksk,
-    KSKPrivate: kskPrivate,
-    ZSK: zsk,
-    ZSKPrivate: zskPrivate,
+  // key setup
+  if cfg.PublicKey != "" {
+    ksk, kskPrivate, err := s.loadKey(cfg.PublicKey, cfg.PrivateKey)
+    if err != nil {
+      return nil, err
+    }
+
+    ecfg.KSK = ksk
+    ecfg.KSKPrivate = kskPrivate
+  }
+
+  if cfg.ZonePublicKey != "" {
+    zsk, zskPrivate, err := s.loadKey(cfg.ZonePublicKey, cfg.ZonePrivateKey)
+    if err != nil {
+      return nil, err
+    }
+
+    ecfg.ZSK = zsk
+    ecfg.ZSKPrivate = zskPrivate
+  }
+
+  if ecfg.KSK != nil && ecfg.ZSK == nil {
+    return nil, fmt.Errorf("Must specify ZSK if KSK is specified")
   }
 
   e, err := madns.NewEngine(ecfg)
