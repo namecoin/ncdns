@@ -1,8 +1,10 @@
 package main
 
 import "github.com/hlandau/degoutils/config"
-import "github.com/hlandau/degoutils/log"
-import "github.com/hlandau/degoutils/daemon"
+
+//import "github.com/hlandau/degoutils/log"
+//import "github.com/hlandau/degoutils/daemon"
+import "github.com/hlandau/degoutils/service"
 import "github.com/hlandau/ncdns/server"
 
 func main() {
@@ -13,21 +15,42 @@ func main() {
 	}
 	config.ParseFatal(&cfg)
 
-	err := daemon.Init()
-	log.Fatale(err)
+	service.Main(&service.Info{
+		Name:        "ncdns",
+		Description: "Namecoin to DNS Daemon",
+		RunFunc: func(smgr service.Manager) error {
+			s, err := server.NewServer(&cfg)
+			if err != nil {
+				return err
+			}
 
-	if cfg.Daemonize {
-		err := daemon.Daemonize()
+			err = s.Start()
+			if err != nil {
+				return err
+			}
+
+			smgr.SetStarted()
+			<-smgr.StopChan()
+
+			return nil
+		},
+	})
+
+	/*	err := daemon.Init()
 		log.Fatale(err)
-	}
 
-	err = daemon.DropPrivileges(cfg.UID, cfg.GID)
-	log.Fatale(err, "can't drop privileges")
+		if cfg.Daemonize {
+			err := daemon.Daemonize()
+			log.Fatale(err)
+		}
 
-	s, err := server.NewServer(&cfg)
-	log.Fatale(err)
+		err = daemon.DropPrivileges(cfg.UID, cfg.GID)
+		log.Fatale(err, "can't drop privileges")
 
-	s.Run()
+		s, err := server.NewServer(&cfg)
+		log.Fatale(err)
+
+		s.Run()*/
 }
 
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later

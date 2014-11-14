@@ -68,7 +68,7 @@ func New(cfg *Config) (backend *Backend, err error) {
 	return
 }
 
-// Keep domains in DNS format.
+// Keep domains in parsed format.
 type domain struct {
 	ncv *ncValue
 }
