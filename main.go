@@ -21,6 +21,7 @@ func main() {
 	service.Main(&service.Info{
 		Name:        "ncdns",
 		Description: "Namecoin to DNS Daemon",
+		DefaultChroot: service.EmptyChrootPath,
 		RunFunc: func(smgr service.Manager) error {
 			s, err := server.NewServer(&cfg)
 			if err != nil {
@@ -28,6 +29,11 @@ func main() {
 			}
 
 			err = s.Start()
+			if err != nil {
+				return err
+			}
+
+			err = smgr.DropPrivileges()
 			if err != nil {
 				return err
 			}
