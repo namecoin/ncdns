@@ -143,7 +143,6 @@ func (s *Server) Start() error {
 
 func (s *Server) Run() {
 	s.Start()
-	log.Info("Ready.")
 
 	// wait
 	sig := make(chan os.Signal)
