@@ -60,4 +60,63 @@ func (nc *Conn) Query(name string) (v string, err error) {
 	return "", fmt.Errorf("bad reply")
 }
 
+var ErrSyncNoSuchBlock = fmt.Errorf("no block exists with given hash")
+
+const rpcInvalidAddressOrKey = -5
+
+func (nc *Conn) Sync(hash string, count int, wait bool) ([]extratypes.NameSyncEvent, error) {
+	cmd, err := extratypes.NewNameSyncCmd(newID(), hash, count, wait)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.Error != nil {
+		if r.Error.Code == rpcInvalidAddressOrKey {
+			return nil, ErrSyncNoSuchBlock
+		}
+		return nil, r.Error
+	}
+
+	if r.Result == nil {
+		return nil, fmt.Errorf("got nil result")
+	}
+
+	if nsr, ok := r.Result.(extratypes.NameSyncReply); ok {
+		return []extratypes.NameSyncEvent(nsr), nil
+	}
+
+	return nil, fmt.Errorf("bad reply")
+}
+
+func (nc *Conn) CurHeight() (int, error) {
+	cmd, err := btcjson.NewGetInfoCmd(newID())
+	if err != nil {
+		return 0, err
+	}
+
+	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	if err != nil {
+		return 0, err
+	}
+
+	if r.Error != nil {
+		return 0, r.Error
+	}
+
+	if r.Result == nil {
+		return 0, fmt.Errorf("got nil result")
+	}
+
+	if rep, ok := r.Result.(*btcjson.InfoResult); ok {
+		return int(rep.Blocks), nil
+	}
+
+	return 0, fmt.Errorf("bad reply")
+}
+
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later

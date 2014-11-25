@@ -132,7 +132,7 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 
 	log.Info("namecoin query (", name, ") succeeded: ", v)
 
-	d, err := b.jsonToDomain(v)
+	d, err := jsonToDomain(v)
 	if err != nil {
 		log.Infoe(err, "cannot convert JSON to domain")
 		return nil, err
@@ -141,13 +141,13 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 	return d, nil
 }
 
-func (b *Backend) jsonToDomain(v string) (dd *domain, err error) {
+func jsonToDomain(v string) (dd *domain, err error) {
 	d := &domain{}
 	ncv := &ncValue{}
 
 	err = json.Unmarshal([]byte(v), ncv)
 	if err != nil {
-		log.Infoe(err, fmt.Sprintf("cannot unmarshal JSON: %+v", v))
+		//log.Infoe(err, fmt.Sprintf("cannot unmarshal JSON: %+v", v))
 		return
 	}
 
