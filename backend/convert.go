@@ -1,7 +1,9 @@
 package backend
 
+/*
 import "github.com/miekg/dns"
 import "net"
+import "regexp"
 
 // Experimental attempt to factor out the JSON->DNS conversion function.
 // Currently used only by namesync, not ncdns.
@@ -15,40 +17,64 @@ func Convert(suffix string, jsonValue string) ([]dns.RR, error) {
 	}
 
 	rootNCV := d.ncv
-	rrs := convertRecursive(suffix, rootNCV, 0)
+	rrs := convertRecursive(nil, suffix, rootNCV, 0)
 
 	return rrs, nil
 }
 
 // Try and tolerate errors.
-func convertRecursive(suffix string, ncv *ncValue, depth int) (rrs []dns.RR) {
+func convertRecursive(out []dns.RR, suffix string, ncv *ncValue, depth int) []dns.RR {
 	if depth > 64 {
-		return
+		return out
 	}
 
-	rrs = append(rrs, convertIPs(suffix, ncv)...)
-	rrs = append(rrs, convertIP6s(suffix, ncv)...)
-	//rrs = append(rrs, ...convertServices(suffix, ncv))
-	//rrs = append(rrs, ...convertAlias(suffix, ncv))
-	rrs = append(rrs, convertNSs(suffix, ncv)...)
+	out = convertAt(out, suffix, ncv)
 
 	for k, v := range ncv.Map {
 		subsuffix := k + "." + suffix
 		if k == "" {
 			subsuffix = suffix
 		}
-		rrs = append(rrs, convertRecursive(subsuffix, v, depth+1)...)
+		out = convertRecursive(out, subsuffix, v, depth+1)
 	}
 
-	rrs = append(rrs, convertDSs(suffix, ncv)...)
-	//rrs = append(rrs, ...convertTXT(suffix, ncv))
-	return
+	return out
 }
 
-func convertIPs(suffix string, ncv *ncValue) (rrs []dns.RR) {
+// Conversion at a specific NCV non-recursivey for all types
+
+func convertAt(out []dns.RR, suffix string, ncv *ncValue) []dns.RR {
+	return convertAt_(out, suffix, ncv, 0)
+}
+
+func convertAt_(out []dns.RR, suffix string, ncv *ncValue, depth int) []dns.RR {
+	if depth > 1 {
+		return out
+	}
+
+	out = convertIPs(out, suffix, ncv)
+	out = convertIP6s(out, suffix, ncv)
+	out = convertNSs(out, suffix, ncv)
+	out = convertDSs(out, suffix, ncv)
+	out = convertTXTs(out, suffix, ncv)
+
+	// XXX: should this apply only if no records were added above?
+	if m, ok := ncv.Map[""]; ok {
+		out = convertAt_(out, suffix, m, depth+1)
+	}
+
+	// TODO: CNAME
+	// TODO: MX
+	// TODO: SRV
+	return out
+}
+
+// Conversion at a specific NCV non-recursively for specific types
+
+func convertIPs(out []dns.RR, suffix string, ncv *ncValue) []dns.RR {
 	ips, err := ncv.GetIPs()
 	if err != nil {
-		return
+		return out
 	}
 
 	for _, ip := range ips {
@@ -57,19 +83,19 @@ func convertIPs(suffix string, ncv *ncValue) (rrs []dns.RR) {
 			continue
 		}
 
-		rrs = append(rrs, &dns.A{
+		out = append(out, &dns.A{
 			Hdr: dns.RR_Header{Name: dns.Fqdn(suffix), Rrtype: dns.TypeA, Class: dns.ClassINET, Ttl: 600},
 			A:   pip,
 		})
 	}
 
-	return
+	return out
 }
 
-func convertIP6s(suffix string, ncv *ncValue) (rrs []dns.RR) {
+func convertIP6s(out []dns.RR, suffix string, ncv *ncValue) []dns.RR {
 	ips, err := ncv.GetIP6s()
 	if err != nil {
-		return
+		return out
 	}
 
 	for _, ip := range ips {
@@ -78,42 +104,71 @@ func convertIP6s(suffix string, ncv *ncValue) (rrs []dns.RR) {
 			continue
 		}
 
-		rrs = append(rrs, &dns.AAAA{
+		out = append(out, &dns.AAAA{
 			Hdr:  dns.RR_Header{Name: dns.Fqdn(suffix), Rrtype: dns.TypeAAAA, Class: dns.ClassINET, Ttl: 600},
 			AAAA: pip,
 		})
 	}
 
-	return
+	return out
 }
 
-func convertNSs(suffix string, ncv *ncValue) (rrs []dns.RR) {
+func convertNSs(out []dns.RR, suffix string, ncv *ncValue) []dns.RR {
 	nss, err := ncv.GetNSs()
 	if err != nil {
-		return
+		return out
 	}
 
 	for _, ns := range nss {
+		if !validateHostName(ns) {
+			continue
+		}
+
 		ns = dns.Fqdn(ns)
-		rrs = append(rrs, &dns.NS{
+		out = append(out, &dns.NS{
 			Hdr: dns.RR_Header{Name: dns.Fqdn(suffix), Rrtype: dns.TypeNS, Class: dns.ClassINET, Ttl: 600},
 			Ns:  ns,
 		})
 	}
 
-	return
+	return out
 }
 
-func convertDSs(suffix string, ncv *ncValue) (rrs []dns.RR) {
+func convertTXTs(out []dns.RR, suffix string, ncv *ncValue) []dns.RR {
+	txts, err := ncv.GetTXTs()
+	if err != nil {
+		return out
+	}
+
+	for _, txt := range txts {
+		out = append(out, &dns.TXT{
+			Hdr: dns.RR_Header{Name: dns.Fqdn(suffix), Rrtype: dns.TypeTXT, Class: dns.ClassINET, Ttl: 600},
+			Txt: txt,
+		})
+	}
+
+	return out
+}
+
+func convertDSs(out []dns.RR, suffix string, ncv *ncValue) []dns.RR {
 	dss, err := ncv.GetDSs()
 	if err != nil {
-		return
+		return out
 	}
 
 	for i := range dss {
 		dss[i].Hdr.Name = dns.Fqdn(suffix)
-		rrs = append(rrs, &dss[i])
+		out = append(out, &dss[i])
 	}
 
-	return
+	return out
 }
+
+// Validation functions
+
+var re_hostName = regexp.MustCompilePOSIX(`^([a-z0-9_-]+\.)*[a-z0-9_-]+\.?$`)
+
+func validateHostName(name string) bool {
+	name = dns.Fqdn(name)
+	return len(name) <= 255 && re_hostName.MatchString(name)
+}*/
