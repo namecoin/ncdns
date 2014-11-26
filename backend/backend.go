@@ -3,15 +3,13 @@ package backend
 import "github.com/golang/groupcache/lru"
 import "github.com/miekg/dns"
 import "github.com/hlandau/degoutils/log"
-import "encoding/json"
-import "encoding/base64"
-import "encoding/hex"
 import "fmt"
 import "strings"
 import "net"
 import "github.com/hlandau/ncdns/namecoin"
 import "github.com/hlandau/madns/merr"
 import "github.com/hlandau/ncdns/util"
+import "github.com/hlandau/ncdns/ncdomain"
 import "sync"
 
 // Provides an abstract zone file for the Namecoin .bit TLD.
@@ -70,19 +68,7 @@ func New(cfg *Config) (backend *Backend, err error) {
 
 // Keep domains in parsed format.
 type domain struct {
-	ncv *ncValue
-}
-
-// Root of a domain JSON structure
-type ncValue struct {
-	IP      interface{}         `json:"ip"`
-	IP6     interface{}         `json:"ip6"`
-	Service [][]interface{}     `json:"service"`
-	Alias   string              `json:"alias"`
-	NS      interface{}         `json:"ns"`
-	Map     map[string]*ncValue `json:"map"` // may contain "" and "*"
-	DS      [][]interface{}     `json:"ds"`
-	TXT     interface{}         `json:"txt"`
+	ncv *ncdomain.Value
 }
 
 func toNamecoinName(basename string) (string, error) {
@@ -141,20 +127,17 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 	return d, nil
 }
 
-func jsonToDomain(v string) (dd *domain, err error) {
+func jsonToDomain(jsonValue string) (*domain, error) {
 	d := &domain{}
-	ncv := &ncValue{}
 
-	err = json.Unmarshal([]byte(v), ncv)
+	v, err := ncdomain.ParseValue(jsonValue, nil)
 	if err != nil {
-		//log.Infoe(err, fmt.Sprintf("cannot unmarshal JSON: %+v", v))
-		return
+		return nil, err
 	}
 
-	d.ncv = ncv
+	d.ncv = v
 
-	dd = d
-	return
+	return d, nil
 }
 
 type btx struct {
@@ -324,7 +307,7 @@ func (tx *btx) doUnderDomain(d *domain) (rrs []dns.RR, err error) {
 	return
 }
 
-func (tx *btx) addAnswersUnderNCValue(rncv *ncValue, subname string) (rrs []dns.RR, err error) {
+func (tx *btx) addAnswersUnderNCValue(rncv *ncdomain.Value, subname string) (rrs []dns.RR, err error) {
 	ncv, sn, err := tx.findNCValue(rncv, subname, nil /*hasNS*/)
 	if err != nil {
 		return
@@ -334,17 +317,17 @@ func (tx *btx) addAnswersUnderNCValue(rncv *ncValue, subname string) (rrs []dns.
 	return tx.addAnswersUnderNCValueActual(ncv, sn)
 }
 
-func hasNS(ncv *ncValue) bool {
+/*func hasNS(ncv *ncdomain.Value) bool {
 	nss, err := ncv.GetNSs()
 	return err == nil && len(nss) > 0
-}
+}*/
 
-func (tx *btx) findNCValue(ncv *ncValue, subname string, shortCircuitFunc func(curNCV *ncValue) bool) (xncv *ncValue, sn string, err error) {
+func (tx *btx) findNCValue(ncv *ncdomain.Value, subname string, shortCircuitFunc func(curNCV *ncdomain.Value) bool) (xncv *ncdomain.Value, sn string, err error) {
 	return tx._findNCValue(ncv, subname, "", 0, shortCircuitFunc)
 }
 
-func (tx *btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
-	shortCircuitFunc func(curNCV *ncValue) bool) (xncv *ncValue, sn string, err error) {
+func (tx *btx) _findNCValue(ncv *ncdomain.Value, isubname, subname string, depth int,
+	shortCircuitFunc func(curNCV *ncdomain.Value) bool) (xncv *ncdomain.Value, sn string, err error) {
 
 	if shortCircuitFunc != nil && shortCircuitFunc(ncv) {
 		return ncv, subname, nil
@@ -373,137 +356,8 @@ func (tx *btx) _findNCValue(ncv *ncValue, isubname, subname string, depth int,
 	return ncv, subname, nil
 }
 
-func (tx *btx) addAnswersUnderNCValueActual(ncv *ncValue, sn string) (rrs []dns.RR, err error) {
-	rrs = convertAt(nil, dns.Fqdn(tx.qname), ncv)
-	return
-}
-
-func (ncv *ncValue) getArray(a interface{}) (ips []string, err error) {
-	if a == nil {
-		return
-	}
-
-	ipa, ok := a.([]interface{})
-	if ok {
-		for _, v := range ipa {
-			s, ok := v.(string)
-			if ok {
-				ips = append(ips, s)
-			}
-		}
-	} else {
-		s, ok := a.(string)
-		if ok {
-			ips = []string{s}
-		} else {
-			err = fmt.Errorf("malformed IP value")
-		}
-	}
-	return
-}
-
-func (ncv *ncValue) GetIPs() (ips []string, err error) {
-	return ncv.getArray(ncv.IP)
-}
-
-func (ncv *ncValue) GetIP6s() (ips []string, err error) {
-	return ncv.getArray(ncv.IP6)
-}
-
-func (ncv *ncValue) GetNSs() (nss []string, err error) {
-	return ncv.getArray(ncv.NS)
-}
-
-func (ncv *ncValue) getArrayTXT(a interface{}) (txts [][]string, err error) {
-	if a == nil {
-		return
-	}
-
-	if txta, ok := a.([]interface{}); ok {
-		// ["...", "..."] or [["...","..."], ["...","..."]]
-		for _, v := range txta {
-			if sa, ok := v.([]string); ok {
-				// [["...", "..."], ["...","..."]]
-				txts = append(txts, sa)
-			} else if s, ok := v.(string); ok {
-				// ["...", "..."]
-				txts = append(txts, segmentizeTXT(s))
-			} else {
-				err = fmt.Errorf("malformed TXT value")
-				return
-			}
-		}
-	} else {
-		// "..."
-		if s, ok := a.(string); ok {
-			txts = append(txts, segmentizeTXT(s))
-		} else {
-			err = fmt.Errorf("malformed TXT value")
-		}
-	}
-	return
-}
-
-func (ncv *ncValue) GetTXTs() (txts [][]string, err error) {
-	return ncv.getArrayTXT(ncv.TXT)
-}
-
-func segmentizeTXT(txt string) (a []string) {
-	for len(txt) > 255 {
-		a = append(a, txt[0:255])
-		txt = txt[255:]
-	}
-	a = append(a, txt)
-	return
-}
-
-func (ncv *ncValue) GetDSs() (dss []dns.DS, err error) {
-	for _, ds := range ncv.DS {
-		//log.Info("  - DS: ", ds)
-		if len(ds) != 4 {
-			log.Info("  DS is bad len")
-			continue
-		}
-
-		a1, ok := ds[0].(float64)
-		if !ok {
-			log.Info("  DS[0]")
-			continue
-		}
-		a2, ok := ds[1].(float64)
-		if !ok {
-			log.Info("  DS[1]")
-			continue
-		}
-		a3, ok := ds[2].(float64)
-		if !ok {
-			log.Info("  DS[2]")
-			continue
-		}
-		a4, ok := ds[3].(string)
-		if !ok {
-			log.Info("  DS[3]")
-			continue
-		}
-
-		a4b, err := base64.StdEncoding.DecodeString(a4)
-		if err != nil {
-			log.Info("can't decode: ", err)
-			err = nil
-			continue
-		}
-
-		a4h := hex.EncodeToString(a4b)
-
-		d := dns.DS{
-			Hdr:        dns.RR_Header{Rrtype: dns.TypeDS, Class: dns.ClassINET, Ttl: 60},
-			KeyTag:     uint16(a1),
-			Algorithm:  uint8(a2),
-			DigestType: uint8(a3),
-			Digest:     a4h,
-		}
-		dss = append(dss, d)
-	}
+func (tx *btx) addAnswersUnderNCValueActual(ncv *ncdomain.Value, sn string) (rrs []dns.RR, err error) {
+	rrs, err = ncv.RRs(nil, dns.Fqdn(tx.qname)) //convertAt(nil, dns.Fqdn(tx.qname), ncv)
 	return
 }
 

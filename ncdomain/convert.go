@@ -89,7 +89,7 @@ func (v *Value) appendNSs(out []dns.RR, suffix string) ([]dns.RR, error) {
 				Class:  dns.ClassINET,
 				Ttl:    600,
 			},
-			Ns: ns,
+			Ns: dns.Fqdn(ns),
 		})
 	}
 
