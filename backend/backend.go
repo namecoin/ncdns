@@ -118,7 +118,7 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 
 	log.Info("namecoin query (", name, ") succeeded: ", v)
 
-	d, err := jsonToDomain(v)
+	d, err := b.jsonToDomain(v)
 	if err != nil {
 		log.Infoe(err, "cannot convert JSON to domain")
 		return nil, err
@@ -127,10 +127,10 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 	return d, nil
 }
 
-func jsonToDomain(jsonValue string) (*domain, error) {
+func (b *Backend) jsonToDomain(jsonValue string) (*domain, error) {
 	d := &domain{}
 
-	v, err := ncdomain.ParseValue(jsonValue, nil)
+	v, err := ncdomain.ParseValue(jsonValue, b.resolveExtraName)
 	if err != nil {
 		return nil, err
 	}
@@ -138,6 +138,16 @@ func jsonToDomain(jsonValue string) (*domain, error) {
 	d.ncv = v
 
 	return d, nil
+}
+
+func (b *Backend) resolveExtraName(name string) (jsonValue string, err error) {
+	v, err := b.nc.Query(name)
+	if err != nil {
+		log.Infoe(err, "namecoin subquery failed: ", err)
+		return "", err
+	}
+
+	return v, nil
 }
 
 type btx struct {

@@ -2,5 +2,3 @@ language: go
 go:
   - 1.3
   - tip
-# COVERALLS_TOKEN
-secure: "K748GqgZz2I4yHcS49Zi78MWx/xWR79zl1YIGoFxHU4TS6JtGJF9gjqDdSv8DBvBEZRXFMq3n5M+/CtYkIf2jQeQawT6I+PKxHJvpFlpqseWxN/aJRHfVsd0NxbWq6Icx7qzUOvgwKDxMSgXqdndh3reHkyTgkou5XIDlU2zf7g="

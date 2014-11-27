@@ -30,19 +30,30 @@ func (v *Value) RRs(out []dns.RR, suffix string) ([]dns.RR, error) {
 	il := len(out)
 	suffix = dns.Fqdn(suffix)
 
-	out, _ = v.appendIPs(out, suffix)
-	out, _ = v.appendIP6s(out, suffix)
 	out, _ = v.appendNSs(out, suffix)
-	out, _ = v.appendTXTs(out, suffix)
+	if len(v.NS) == 0 {
+		out, _ = v.appendTranslate(out, suffix)
+		if v.Translate == "" {
+			out, _ = v.appendAlias(out, suffix)
+			if v.Alias == "" {
+				out, _ = v.appendIPs(out, suffix)
+				out, _ = v.appendIP6s(out, suffix)
+				out, _ = v.appendTXTs(out, suffix)
+				out, _ = v.appendServices(out, suffix)
+				out, _ = v.appendMXs(out, suffix)
+			}
+		}
+	}
 	out, _ = v.appendDSs(out, suffix)
-	out, _ = v.appendServices(out, suffix)
-	out, _ = v.appendMXs(out, suffix)
-	out, _ = v.appendAlias(out, suffix)
-	out, _ = v.appendTranslate(out, suffix)
 
 	xout := out[il:]
 	for i := range xout {
-		xout[i].Header().Name = suffix
+		h := xout[i].Header()
+		if h.Rrtype == dns.TypeSRV {
+			h.Name += "." + suffix
+		} else {
+			h.Name = suffix
+		}
 	}
 
 	return out, nil
@@ -175,10 +186,14 @@ func (v *Value) RRsRecursive(out []dns.RR, suffix string) ([]dns.RR, error) {
 	}
 
 	for mk, mv := range v.Map {
-		out, err = mv.RRsRecursive(out, mk+"."+suffix)
-		if err != nil {
-			return nil, err
+		if !validateLabel(mk) && mk != "" && mk != "*" {
+			continue
 		}
+
+		out, err = mv.RRsRecursive(out, mk+"."+suffix)
+		//if err != nil {
+		//	return nil, err
+		//}
 	}
 
 	return out, nil
@@ -188,6 +203,7 @@ type rawValue struct {
 	IP         interface{} `json:"ip"`
 	IP6        interface{} `json:"ip6"`
 	NS         interface{} `json:"ns"`
+	nsSet      map[string]struct{}
 	DNS        interface{} `json:"dns"` // actually an alias for NS
 	Alias      interface{} `json:"alias"`
 	Translate  interface{} `json:"translate"`
@@ -326,28 +342,40 @@ func (rv *rawValue) parseNS(v *Value) error {
 
 	v.NS = nil
 
+	if rv.nsSet == nil {
+		rv.nsSet = map[string]struct{}{}
+	}
+
 	switch rv.NS.(type) {
 	case []interface{}:
 		for _, si := range rv.NS.([]interface{}) {
 			s, ok := si.(string)
-			if !ok || !validateHostName(s) {
+			if !ok {
 				continue
 			}
-
-			v.NS = append(v.NS, s)
+			rv.addNS(v, s)
 		}
 		return nil
 	case string:
 		s := rv.NS.(string)
-		if !validateHostName(s) {
-			return fmt.Errorf("malformed NS hostname")
-		}
-
-		v.NS = append(v.NS, s)
+		rv.addNS(v, s)
 		return nil
 	default:
 		return fmt.Errorf("unknown NS field format")
 	}
+}
+
+func (rv *rawValue) addNS(v *Value, s string) error {
+	if !validateHostName(s) {
+		return fmt.Errorf("malformed NS hostname")
+	}
+
+	if _, ok := rv.nsSet[s]; !ok {
+		v.NS = append(v.NS, s)
+		rv.nsSet[s] = struct{}{}
+	}
+
+	return nil
 }
 
 func (rv *rawValue) parseAlias(v *Value) error {
@@ -417,7 +445,7 @@ func (rv *rawValue) parseDelegate(v *Value, resolve ResolveFunc, depth, mergeDep
 }
 
 func (rv *rawValue) parseHostmaster(v *Value) error {
-	if rv.Translate == nil {
+	if rv.Hostmaster == nil {
 		return nil
 	}
 
@@ -498,11 +526,13 @@ func (rv *rawValue) parseTXT(v *Value) error {
 				// [["...", "..."], ["...", "..."]]
 				a := []string{}
 				for _, x := range sa {
-					if xs, ok := x.(string); ok {
+					if xs, ok := x.(string); ok && len(xs) <= 255 {
 						a = append(a, xs)
 					}
 				}
-				v.TXT = append(v.TXT, a)
+				if len(a) > 0 {
+					v.TXT = append(v.TXT, a)
+				}
 			} else if s, ok := vv.(string); ok {
 				v.TXT = append(v.TXT, segmentizeTXT(s))
 			} else {
@@ -515,6 +545,24 @@ func (rv *rawValue) parseTXT(v *Value) error {
 			v.TXT = append(v.TXT, segmentizeTXT(s))
 		} else {
 			return fmt.Errorf("malformed TXT value")
+		}
+	}
+
+	// Make sure the content of each TXT record does not exceed 65535 bytes.
+	for i := range v.TXT {
+		for {
+			L := 0
+
+			for j := range v.TXT[i] {
+				L += len(v.TXT[i][j]) + 1
+			}
+
+			if L <= 65535 {
+				break
+			}
+
+			// Pop segments until under the limit.
+			v.TXT[i] = v.TXT[i][0 : len(v.TXT[i])-1]
 		}
 	}
 
@@ -725,8 +773,12 @@ func (v *Value) moveEmptyMapItems() error {
 
 // Validation functions
 
-var re_hostName = regexp.MustCompilePOSIX(`^([a-z0-9_-]+\.)*[a-z0-9_-]+\.?$`)
+// This is used to validate NS records, targets in SRV records, etc. In these cases
+// an IP address is not allowed. Therefore this regex must exclude all-numeric domain names.
+// This is done by requiring the final part to start with an alphabetic character.
+var re_hostName = regexp.MustCompilePOSIX(`^([a-z0-9_][a-z0-9_-]{0,62}\.)*[a-z_][a-z0-9_-]{0,62}\.?$`)
 var re_serviceName = regexp.MustCompilePOSIX(`^[a-z_][a-z0-9_-]*$`)
+var re_label = regexp.MustCompilePOSIX(`^[a-z0-9_][a-z0-9_-]*$`)
 
 func validateHostName(name string) bool {
 	name = dns.Fqdn(name)
@@ -735,6 +787,10 @@ func validateHostName(name string) bool {
 
 func validateServiceName(name string) bool {
 	return len(name) < 63 && re_serviceName.MatchString(name)
+}
+
+func validateLabel(name string) bool {
+	return len(name) <= 63 && re_label.MatchString(name)
 }
 
 func validateEmail(email string) bool {
