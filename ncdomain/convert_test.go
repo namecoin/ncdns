@@ -40,18 +40,19 @@ func stripTag(L string) string {
 func suiteReader(t *testing.T) <-chan testItem {
 	testItemChan := make(chan testItem, 20)
 
+	gopath := os.Getenv("GOPATH")
+	if gopath == "" {
+		gopath = "."
+	}
+
+	fpath := filepath.Join(gopath, "src/github.com/hlandau/nctestsuite/testsuite.txt")
+	f, err := os.Open(fpath)
+
+	if err != nil {
+		t.Fatalf("Error: Couldn't open %s: %+v", fpath, err)
+	}
+
 	go func() {
-		gopath := os.Getenv("GOPATH")
-		if gopath == "" {
-			gopath = "."
-		}
-
-		fpath := filepath.Join(gopath, "src/github.com/hlandau/nctestsuite/testsuite.txt")
-		f, err := os.Open(fpath)
-
-		if err != nil {
-			t.Fatalf("Error: Couldn't open %s: %+v", fpath, err)
-		}
 		defer f.Close()
 
 		lineChan := make(chan string, 20)
