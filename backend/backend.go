@@ -45,6 +45,10 @@ type Config struct {
 	// should resolve to. This should be the public IP of the nameserver serving the
 	// zone expressed by this backend.
 	SelfIP string
+
+	// Map names (like "d/example") to strings containing JSON values. Used to provide
+	// fake names for testing purposes. You don't need to use this.
+	FakeNames map[string]string
 }
 
 // Creates a new Namecoin backend.
@@ -59,6 +63,10 @@ func New(cfg *Config) (backend *Backend, err error) {
 	b.cache.MaxEntries = cfg.CacheMaxEntries
 	if b.cache.MaxEntries == 0 {
 		b.cache.MaxEntries = defaultMaxEntries
+	}
+
+	if b.cfg.FakeNames == nil {
+		b.cfg.FakeNames = map[string]string{}
 	}
 
 	backend = b
@@ -109,10 +117,25 @@ func (b *Backend) addNamecoinEntryToCache(name string, d *domain) {
 	b.cache.Add(name, d)
 }
 
-func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
+func (b *Backend) resolveName(name string) (jsonValue string, err error) {
+	if fv, ok := b.cfg.FakeNames[name]; ok {
+		if fv == "NX" {
+			return "", merr.ErrNoSuchDomain
+		}
+		return fv, nil
+	}
+
 	v, err := b.nc.Query(name)
 	if err != nil {
-		log.Infoe(err, "namecoin query failed: ", err)
+		return "", err
+	}
+
+	return v, nil
+}
+
+func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
+	v, err := b.resolveName(name)
+	if err != nil {
 		return nil, err
 	}
 
@@ -141,13 +164,7 @@ func (b *Backend) jsonToDomain(name, jsonValue string) (*domain, error) {
 }
 
 func (b *Backend) resolveExtraName(name string) (jsonValue string, err error) {
-	v, err := b.nc.Query(name)
-	if err != nil {
-		log.Infoe(err, "namecoin subquery failed: ", err)
-		return "", err
-	}
-
-	return v, nil
+	return b.resolveName(name)
 }
 
 type btx struct {
