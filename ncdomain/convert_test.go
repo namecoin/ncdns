@@ -37,16 +37,27 @@ func stripTag(L string) string {
 	return L
 }
 
-func suiteReader(t *testing.T) <-chan testItem {
-	testItemChan := make(chan testItem, 20)
-
+func openFileFromGOPATH(fn string) (f *os.File, err error) {
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
 		gopath = "."
 	}
 
-	fpath := filepath.Join(gopath, "src/github.com/hlandau/nctestsuite/testsuite.txt")
-	f, err := os.Open(fpath)
+	for _, p := range strings.Split(gopath, string(os.PathListSeparator)) {
+		f, err = os.Open(filepath.Join(p, fn))
+		if err == nil {
+			return
+		}
+	}
+
+	return
+}
+
+func suiteReader(t *testing.T) <-chan testItem {
+	testItemChan := make(chan testItem, 20)
+
+	fpath := "src/github.com/hlandau/nctestsuite/testsuite.txt"
+	f, err := openFileFromGOPATH(fpath)
 
 	if err != nil {
 		t.Fatalf("Error: Couldn't open %s: %+v", fpath, err)
