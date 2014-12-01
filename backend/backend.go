@@ -118,7 +118,7 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 
 	log.Info("namecoin query (", name, ") succeeded: ", v)
 
-	d, err := b.jsonToDomain(v)
+	d, err := b.jsonToDomain(name, v)
 	if err != nil {
 		log.Infoe(err, "cannot convert JSON to domain")
 		return nil, err
@@ -127,10 +127,10 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 	return d, nil
 }
 
-func (b *Backend) jsonToDomain(jsonValue string) (*domain, error) {
+func (b *Backend) jsonToDomain(name, jsonValue string) (*domain, error) {
 	d := &domain{}
 
-	v, err := ncdomain.ParseValue(jsonValue, b.resolveExtraName)
+	v, err := ncdomain.ParseValue(name, jsonValue, b.resolveExtraName)
 	if err != nil {
 		return nil, err
 	}
@@ -344,10 +344,7 @@ func (tx *btx) _findNCValue(ncv *ncdomain.Value, isubname, subname string, depth
 	}
 
 	if isubname != "" {
-		head, rest, err := util.SplitDomainHead(isubname)
-		if err != nil {
-			return nil, "", err
-		}
+		head, rest := util.SplitDomainHead(isubname)
 
 		sub, ok := ncv.Map[head]
 		if !ok {
@@ -367,7 +364,7 @@ func (tx *btx) _findNCValue(ncv *ncdomain.Value, isubname, subname string, depth
 }
 
 func (tx *btx) addAnswersUnderNCValueActual(ncv *ncdomain.Value, sn string) (rrs []dns.RR, err error) {
-	rrs, err = ncv.RRs(nil, dns.Fqdn(tx.qname)) //convertAt(nil, dns.Fqdn(tx.qname), ncv)
+	rrs, err = ncv.RRs(nil, dns.Fqdn(tx.qname), dns.Fqdn(tx.basename+"."+tx.rootname)) //convertAt(nil, dns.Fqdn(tx.qname), ncv)
 	return
 }
 

@@ -196,9 +196,81 @@ func syncReplyParser(m json.RawMessage) (interface{}, error) {
 	return nsr, nil
 }
 
+// name_filter
+
+type NameFilterCmd struct {
+	id     interface{}
+	Regexp string
+	MaxAge int
+	From   int
+	Count  int
+}
+
+func NewNameFilterCmd(id interface{}, regexp string, maxage, from, count int) (*NameFilterCmd, error) {
+	return &NameFilterCmd{
+		id:     id,
+		Regexp: regexp,
+		MaxAge: maxage,
+		From:   from,
+		Count:  count,
+	}, nil
+}
+
+func (c *NameFilterCmd) Id() interface{} {
+	return c.id
+}
+
+func (c *NameFilterCmd) Method() string {
+	return "name_filter"
+}
+
+func (c *NameFilterCmd) MarshalJSON() ([]byte, error) {
+	params := []interface{}{
+		c.Regexp,
+		c.MaxAge,
+		c.From,
+		c.Count,
+	}
+
+	raw, err := btcjson.NewRawCmd(c.id, c.Method(), params)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(raw)
+}
+
+func (c *NameFilterCmd) UnmarshalJSON(b []byte) error {
+	// We don't need to implement this as we are only ever the client.
+	panic("not implemented")
+	return nil
+}
+
+type NameFilterReply []NameFilterItem
+type NameFilterItem struct {
+	Name      string // "d/example"
+	Value     string // "..."
+	TxID      string
+	Address   string
+	Height    int
+	ExpiresIn int `json:"expires_in"`
+	Expired   bool
+}
+
+func filterReplyParser(m json.RawMessage) (interface{}, error) {
+	nsr := NameFilterReply{}
+	err := json.Unmarshal(m, &nsr)
+	if err != nil {
+		return nil, err
+	}
+
+	return nsr, nil
+}
+
 func init() {
 	btcjson.RegisterCustomCmd("name_show", nil, showReplyParser, "name_show <name>")
 	btcjson.RegisterCustomCmd("name_sync", nil, syncReplyParser, "name_sync <block-hash> <count> <wait?>")
+	btcjson.RegisterCustomCmd("name_filter", nil, filterReplyParser, "name_filter <regexp> <maxage> <from> <count>")
 }
 
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later

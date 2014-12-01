@@ -1,12 +1,208 @@
 package ncdomain_test
 
 import "github.com/hlandau/ncdns/ncdomain"
-import "github.com/miekg/dns"
+import _ "github.com/hlandau/nctestsuite"
 import "testing"
-import "net"
 import "fmt"
 import "strings"
+import "os"
+import "path/filepath"
+import "bufio"
+import "io"
+import "sort"
+import "unicode"
+import "unicode/utf8"
 
+//import "github.com/miekg/dns"
+//import "net"
+
+type testItem struct {
+	ID      string
+	Names   map[string]string
+	Records string
+}
+
+func stripTag(L string) string {
+	if len(L) < 3 {
+		return L
+	}
+
+	r, _ := utf8.DecodeRuneInString(L)
+
+	if unicode.IsUpper(r) {
+		x := strings.IndexRune(L, ' ')
+		L = L[x+1:]
+	}
+
+	return L
+}
+
+func suiteReader(t *testing.T) <-chan testItem {
+	testItemChan := make(chan testItem, 20)
+
+	go func() {
+		gopath := os.Getenv("GOPATH")
+		if gopath == "" {
+			gopath = "."
+		}
+
+		fpath := filepath.Join(gopath, "src/github.com/hlandau/nctestsuite/testsuite.txt")
+		f, err := os.Open(fpath)
+
+		if err != nil {
+			t.Fatalf("Error: Couldn't open %s: %+v", fpath, err)
+		}
+		defer f.Close()
+
+		lineChan := make(chan string, 20)
+		syncChan := make(chan struct{})
+
+		go func() {
+			reissue := false
+			var L string
+			var ok bool
+			for {
+				if reissue {
+					reissue = false
+				} else {
+					L, ok = <-lineChan
+				}
+
+				if !ok {
+					break
+				}
+
+				m := map[string]string{}
+
+				if L != "IN" && !strings.HasPrefix(L, "IN ") {
+					t.Fatalf("invalid test suite file")
+				}
+
+				id := ""
+				if len(L) > 2 {
+					id = L[3:]
+				}
+
+				for {
+					name := <-lineChan
+					value := <-lineChan
+					m[name] = value
+
+					L = <-lineChan
+					if L != "IN" {
+						break
+					}
+				}
+
+				if L != "OUT" {
+					t.Fatalf("invalid test suite file")
+				}
+
+				records := []string{}
+				for {
+					L, ok = <-lineChan
+					if !ok || L == "IN" || strings.HasPrefix(L, "IN ") {
+						reissue = true
+						break
+					}
+
+					L = stripTag(L)
+					records = append(records, L)
+				}
+
+				sort.Strings(records)
+
+				// process records
+				ti := testItem{
+					ID:      id,
+					Names:   m,
+					Records: strings.Join(records, "\n"),
+				}
+
+				testItemChan <- ti
+			}
+
+			close(testItemChan)
+			close(syncChan)
+		}()
+
+		r := bufio.NewReader(f)
+		for {
+			L, err := r.ReadString('\n')
+			if err != nil {
+				if err != io.EOF {
+					t.Errorf("error while reading line: %+v", err)
+				}
+				break
+			}
+
+			L = strings.Trim(L, " \t\r\n")
+			if L == "" || (len(L) > 0 && L[0] == '#') {
+				continue
+			}
+
+			lineChan <- L
+		}
+		close(lineChan)
+		<-syncChan
+	}()
+
+	return testItemChan
+}
+
+func TestSuite(t *testing.T) {
+	items := suiteReader(t)
+	for ti := range items {
+		resolve := func(name string) (string, error) {
+			v, ok := ti.Names[name]
+			if !ok {
+				return "", fmt.Errorf("not found")
+			}
+
+			return v, nil
+		}
+
+		for k, jsonValue := range ti.Names {
+			dnsName, err := convertName(k)
+			if err != nil {
+				continue
+			}
+
+			v, err := ncdomain.ParseValue(k, jsonValue, resolve)
+			if err != nil {
+				// TODO
+				continue
+			}
+
+			rrstrs := []string{}
+			rrs, _ := v.RRsRecursive(nil, dnsName+".bit.", dnsName+".bit.")
+			for _, rr := range rrs {
+				s := rr.String()
+				s = strings.Replace(s, "\t600\t", "\t", -1) // XXX
+				rrstrs = append(rrstrs, strings.Replace(s, "\t", " ", -1))
+			}
+			sort.Strings(rrstrs)
+			rrstr := strings.Join(rrstrs, "\n")
+
+			// CHECK MATCH
+			if rrstr != ti.Records {
+				t.Errorf("Didn't match: %s\n%+v\n    !=\n%+v\n\n%#v\n\n%#v", ti.ID, rrstr, ti.Records, v, rrs)
+			}
+		}
+	}
+}
+
+func convertName(n string) (string, error) {
+	if len(n) < 3 || len(n) > 65 {
+		return "", fmt.Errorf("invalid name")
+	}
+	if n[0:2] != "d/" {
+		return "", fmt.Errorf("not a domain")
+	}
+	return n[2:], nil
+}
+
+/*
 type item struct {
 	jsonValue     string
 	value         *ncdomain.Value
@@ -195,4 +391,4 @@ func eqValueMap(a *ncdomain.Value, b *ncdomain.Value) bool {
 	}
 
 	return true
-}
+}*/

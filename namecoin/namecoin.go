@@ -119,4 +119,30 @@ func (nc *Conn) CurHeight() (int, error) {
 	return 0, fmt.Errorf("bad reply")
 }
 
+func (nc *Conn) Filter(regexp string, maxage, from, count int) (names []extratypes.NameFilterItem, err error) {
+	cmd, err := extratypes.NewNameFilterCmd(newID(), regexp, maxage, from, count)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.Error != nil {
+		return nil, r.Error
+	}
+
+	if r.Result == nil {
+		return nil, fmt.Errorf("got nil result")
+	}
+
+	if nsr, ok := r.Result.(extratypes.NameFilterReply); ok {
+		return []extratypes.NameFilterItem(nsr), nil
+	}
+
+	return nil, fmt.Errorf("bad reply")
+}
+
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later
