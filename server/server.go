@@ -6,8 +6,6 @@ import "github.com/hlandau/ncdns/backend"
 import "github.com/miekg/dns"
 import "os"
 import "fmt"
-import "os/signal"
-import "syscall"
 import "path/filepath"
 
 const version = "1.0"
@@ -68,23 +66,17 @@ func NewServer(cfg *ServerConfig) (s *Server, err error) {
 
 	// key setup
 	if cfg.PublicKey != "" {
-		ksk, kskPrivate, err := s.loadKey(cfg.PublicKey, cfg.PrivateKey)
+		ecfg.KSK, ecfg.KSKPrivate, err = s.loadKey(cfg.PublicKey, cfg.PrivateKey)
 		if err != nil {
 			return nil, err
 		}
-
-		ecfg.KSK = ksk
-		ecfg.KSKPrivate = kskPrivate
 	}
 
 	if cfg.ZonePublicKey != "" {
-		zsk, zskPrivate, err := s.loadKey(cfg.ZonePublicKey, cfg.ZonePrivateKey)
+		ecfg.ZSK, ecfg.ZSKPrivate, err = s.loadKey(cfg.ZonePublicKey, cfg.ZonePrivateKey)
 		if err != nil {
 			return nil, err
 		}
-
-		ecfg.ZSK = zsk
-		ecfg.ZSKPrivate = zskPrivate
 	}
 
 	if ecfg.KSK != nil && ecfg.ZSK == nil {
@@ -139,19 +131,6 @@ func (s *Server) Start() error {
 	s.tcpListener = s.runListener("tcp")
 
 	return nil
-}
-
-func (s *Server) Run() {
-	s.Start()
-
-	// wait
-	sig := make(chan os.Signal)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	for {
-		s := <-sig
-		fmt.Printf("Signal %v received, stopping.", s)
-		break
-	}
 }
 
 func (s *Server) doRunListener(ds *dns.Server) {

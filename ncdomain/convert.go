@@ -6,13 +6,12 @@ import "fmt"
 import "github.com/miekg/dns"
 import "encoding/base64"
 import "encoding/hex"
-import "regexp"
-import "net/mail"
 import "github.com/hlandau/ncdns/util"
 import "strings"
 
 const depthLimit = 16
 const mergeDepthLimit = 4
+const defaultTTL = 600
 
 // Note: Name values in Value (e.g. those in Alias and Target, Services, MXs,
 // etc.) are not necessarily fully qualified and must be fully qualified before
@@ -94,7 +93,7 @@ func (v *Value) appendIPs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, er
 				Name:   suffix,
 				Rrtype: dns.TypeA,
 				Class:  dns.ClassINET,
-				Ttl:    600,
+				Ttl:    defaultTTL,
 			},
 			A: ip,
 		})
@@ -110,7 +109,7 @@ func (v *Value) appendIP6s(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, e
 				Name:   suffix,
 				Rrtype: dns.TypeAAAA,
 				Class:  dns.ClassINET,
-				Ttl:    600,
+				Ttl:    defaultTTL,
 			},
 			AAAA: ip,
 		})
@@ -131,7 +130,7 @@ func (v *Value) appendNSs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, er
 				Name:   suffix,
 				Rrtype: dns.TypeNS,
 				Class:  dns.ClassINET,
-				Ttl:    600,
+				Ttl:    defaultTTL,
 			},
 			Ns: qn,
 		})
@@ -147,7 +146,7 @@ func (v *Value) appendTXTs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, e
 				Name:   suffix,
 				Rrtype: dns.TypeTXT,
 				Class:  dns.ClassINET,
-				Ttl:    600,
+				Ttl:    defaultTTL,
 			},
 			Txt: txt,
 		})
@@ -199,7 +198,7 @@ func (v *Value) appendAlias(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, 
 				Name:   suffix,
 				Rrtype: dns.TypeCNAME,
 				Class:  dns.ClassINET,
-				Ttl:    600,
+				Ttl:    defaultTTL,
 			},
 			Target: qn,
 		})
@@ -219,7 +218,7 @@ func (v *Value) appendTranslate(out []dns.RR, suffix, apexSuffix string) ([]dns.
 				Name:   suffix,
 				Rrtype: dns.TypeDNAME,
 				Class:  dns.ClassINET,
-				Ttl:    600,
+				Ttl:    defaultTTL,
 			},
 			Target: qn,
 		})
@@ -235,7 +234,7 @@ func (v *Value) RRsRecursive(out []dns.RR, suffix, apexSuffix string) ([]dns.RR,
 	}
 
 	for mk, mv := range v.Map {
-		if !validateLabel(mk) && mk != "" && mk != "*" {
+		if !util.ValidateLabel(mk) && mk != "" && mk != "*" {
 			continue
 		}
 
@@ -390,7 +389,7 @@ func (v *Value) qualifyIntl(name, suffix, apexSuffix string) string {
 
 func (v *Value) qualify(name, suffix, apexSuffix string) (string, bool) {
 	s := v.qualifyIntl(name, suffix, apexSuffix)
-	if !validateHostName(s) {
+	if !util.ValidateHostName(s) {
 		return "", false
 	}
 
@@ -630,7 +629,7 @@ func (rv *rawValue) parseHostmaster(v *Value) error {
 	}
 
 	if s, ok := rv.Hostmaster.(string); ok {
-		if !validateEmail(s) {
+		if !util.ValidateEmail(s) {
 			return fmt.Errorf("malformed e. mail address in email field")
 		}
 
@@ -682,7 +681,7 @@ func (rv *rawValue) parseDS(v *Value) error {
 
 				a4h := hex.EncodeToString(a4b)
 				v.DS = append(v.DS, &dns.DS{
-					Hdr:        dns.RR_Header{Rrtype: dns.TypeDS, Class: dns.ClassINET, Ttl: 600},
+					Hdr:        dns.RR_Header{Rrtype: dns.TypeDS, Class: dns.ClassINET, Ttl: defaultTTL},
 					KeyTag:     uint16(a1),
 					Algorithm:  uint8(a2),
 					DigestType: uint8(a3),
@@ -753,7 +752,8 @@ func (rv *rawValue) parseTLSA(v *Value) error {
 				name := "_" + ports + "._" + transport
 
 				v.TLSA = append(v.TLSA, &dns.TLSA{
-					Hdr:          dns.RR_Header{Name: name, Rrtype: dns.TypeTLSA, Class: dns.ClassINET, Ttl: 600},
+					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
+						Ttl: defaultTTL},
 					Usage:        uint8(a1),
 					Selector:     uint8(a2),
 					MatchingType: uint8(a3),
@@ -865,7 +865,7 @@ func (rv *rawValue) parseSingleMX(s interface{}, v *Value, relname string) error
 	}
 
 	v.MX = append(v.MX, &dns.MX{
-		Hdr:        dns.RR_Header{Rrtype: dns.TypeMX, Class: dns.ClassINET, Ttl: 600},
+		Hdr:        dns.RR_Header{Rrtype: dns.TypeMX, Class: dns.ClassINET, Ttl: defaultTTL},
 		Preference: uint16(prio),
 		Mx:         hostname,
 	})
@@ -910,12 +910,12 @@ func (rv *rawValue) parseSingleService(svc interface{}, v *Value, relname string
 	}
 
 	appProtoName, ok := svca[0].(string)
-	if !ok || !validateServiceName(appProtoName) {
+	if !ok || !util.ValidateServiceName(appProtoName) {
 		return fmt.Errorf("malformed service value")
 	}
 
 	transportProtoName, ok := svca[1].(string)
-	if !ok || !validateServiceName(transportProtoName) {
+	if !ok || !util.ValidateServiceName(transportProtoName) {
 		return fmt.Errorf("malformed service value")
 	}
 
@@ -947,7 +947,7 @@ func (rv *rawValue) parseSingleService(svc interface{}, v *Value, relname string
 			Name:   sname,
 			Rrtype: dns.TypeSRV,
 			Class:  dns.ClassINET,
-			Ttl:    600,
+			Ttl:    defaultTTL,
 		},
 		Priority: uint16(priority),
 		Weight:   uint16(weight),
@@ -1037,34 +1037,4 @@ func (v *Value) moveEmptyMapItems() error {
 		}
 	}
 	return nil
-}
-
-// Validation functions
-
-// This is used to validate NS records, targets in SRV records, etc. In these cases
-// an IP address is not allowed. Therefore this regex must exclude all-numeric domain names.
-// This is done by requiring the final part to start with an alphabetic character.
-var re_hostName = regexp.MustCompilePOSIX(`^(([a-z0-9_][a-z0-9_-]{0,62}\.)*[a-z_][a-z0-9_-]{0,62}\.?|\.)$`)
-var re_serviceName = regexp.MustCompilePOSIX(`^[a-z_][a-z0-9_-]*$`)
-var re_label = regexp.MustCompilePOSIX(`^[a-z0-9_][a-z0-9_-]*$`)
-
-func validateHostName(name string) bool {
-	name = dns.Fqdn(name)
-	return len(name) <= 255 && re_hostName.MatchString(name)
-}
-
-func validateServiceName(name string) bool {
-	return len(name) < 63 && re_serviceName.MatchString(name)
-}
-
-func validateLabel(name string) bool {
-	return len(name) <= 63 && re_label.MatchString(name)
-}
-
-func validateEmail(email string) bool {
-	addr, err := mail.ParseAddress(email)
-	if addr == nil || err != nil {
-		return false
-	}
-	return addr.Name == ""
 }

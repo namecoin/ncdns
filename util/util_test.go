@@ -2,6 +2,7 @@ package util_test
 
 import "testing"
 import "github.com/hlandau/ncdns/util"
+import "github.com/hlandau/madns/merr"
 
 type item struct {
 	input            string
@@ -36,6 +37,47 @@ func TestSplitDomainHead(t *testing.T) {
 		}
 		if trest != items[i].expectedTailRest {
 			t.Errorf("Input \"%s\": tail rest \"%s\" does not equal expected value \"%s\"", items[i].input, trest, items[i].expectedTailRest)
+		}
+	}
+}
+
+type aitem struct {
+	input            string
+	anchor           string
+	expectedSubname  string
+	expectedBasename string
+	expectedRootname string
+	expectedError    error
+}
+
+var aitems = []aitem{
+	aitem{"", "bit", "", "", "", merr.ErrNotInZone},
+	aitem{".", "bit", "", "", "", merr.ErrNotInZone},
+	aitem{"d.", "bit", "", "", "", merr.ErrNotInZone},
+	aitem{"a.b.c.d.", "bit", "", "", "", merr.ErrNotInZone},
+	aitem{"a.b.c.d.bit.", "bit", "a.b.c", "d", "bit", nil},
+	aitem{"d.bit.", "bit", "", "d", "bit", nil},
+	aitem{"bit.", "bit", "", "", "bit", nil},
+	aitem{"bit.x.y.z.", "bit", "", "", "bit.x.y.z", nil},
+	aitem{"d.bit.x.y.z.", "bit", "", "d", "bit.x.y.z", nil},
+	aitem{"c.d.bit.x.y.z.", "bit", "c", "d", "bit.x.y.z", nil},
+	aitem{"a.b.c.d.bit.x.y.z.", "bit", "a.b.c", "d", "bit.x.y.z", nil},
+}
+
+func TestSplitDomainByFloatingAnchor(t *testing.T) {
+	for i, it := range aitems {
+		subname, basename, rootname, err := util.SplitDomainByFloatingAnchor(it.input, it.anchor)
+		if subname != it.expectedSubname {
+			t.Errorf("Item %d: subname \"%s\" does not equal expected value \"%s\"", i, subname, it.expectedSubname)
+		}
+		if basename != it.expectedBasename {
+			t.Errorf("Item %d: basename \"%s\" does not equal expected value \"%s\"", i, basename, it.expectedBasename)
+		}
+		if rootname != it.expectedRootname {
+			t.Errorf("Item %d: rootname \"%s\" does not equal expected value \"%s\"", i, basename, it.expectedRootname)
+		}
+		if err != it.expectedError {
+			t.Errorf("Item %d: error \"%s\" does not equal expected error \"%s\"", i, err, it.expectedError)
 		}
 	}
 }
