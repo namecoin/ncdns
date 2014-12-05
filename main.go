@@ -1,9 +1,6 @@
 package main
 
 import "github.com/hlandau/degoutils/config"
-
-//import "github.com/hlandau/degoutils/log"
-//import "github.com/hlandau/degoutils/daemon"
 import "github.com/hlandau/degoutils/service"
 import "github.com/hlandau/ncdns/server"
 import "path/filepath"
