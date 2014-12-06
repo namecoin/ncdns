@@ -1097,7 +1097,6 @@ func (rv *rawValue) parseMap(v *Value, resolve ResolveFunc, errFunc ErrorFunc, d
 		if err == nil {
 			// deprecated case: "map": { "": "127.0.0.1" }
 			rv2.IP = s
-			rv2.IP6 = s
 		} else {
 			// normal case: "map": { "": { ... } }
 			err = json.Unmarshal(mv, rv2)
