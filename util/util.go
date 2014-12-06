@@ -94,17 +94,29 @@ func SplitDomainByFloatingAnchor(qname, anchor string) (subname, basename, rootn
 // Convert a domain name basename (e.g. "example") to a Namecoin domain name
 // key name ("d/example").
 func BasenameToNamecoinKey(basename string) (string, error) {
-	return "d/" + basename, nil
+	if !ValidateDomainNameLabel(basename) {
+		return "", fmt.Errorf("invalid domain name")
+	}
+	return basenameToNamecoinKey(basename), nil
+}
+
+func basenameToNamecoinKey(basename string) string {
+	return "d/" + basename
 }
 
 // Convert a Namecoin domain name key name (e.g. "d/example") to a domain name
 // basename ("example").
 func NamecoinKeyToBasename(key string) (string, error) {
-	if strings.HasPrefix(key, "d/") {
-		return key[2:], nil
+	if !strings.HasPrefix(key, "d/") {
+		return "", fmt.Errorf("not a valid domain name key")
 	}
 
-	return "", fmt.Errorf("not a domain name key")
+	key = key[2:]
+	if !ValidateDomainNameLabel(key) {
+		return "", fmt.Errorf("not a valid domain name key")
+	}
+
+	return key, nil
 }
 
 // This is used to validate NS records, targets in SRV records, etc. In these cases
@@ -113,6 +125,7 @@ func NamecoinKeyToBasename(key string) (string, error) {
 var re_hostName = regexp.MustCompilePOSIX(`^(([a-z0-9_][a-z0-9_-]{0,62}\.)*[a-z_][a-z0-9_-]{0,62}\.?|\.)$`)
 var re_label = regexp.MustCompilePOSIX(`^[a-z_][a-z0-9_-]*$`)
 var re_serviceName = regexp.MustCompilePOSIX(`^[a-z_][a-z0-9_-]*$`)
+var re_domainNameLabel = regexp.MustCompilePOSIX(`^(xn--)?[a-z0-9]+(-[a-z0-9]+)*$`)
 
 func ValidateHostName(name string) bool {
 	name = dns.Fqdn(name)
@@ -127,12 +140,44 @@ func ValidateServiceName(name string) bool {
 	return len(name) < 63 && re_serviceName.MatchString(name)
 }
 
+func ValidateDomainNameLabel(name string) bool {
+	return len(name) <= 63 && re_domainNameLabel.MatchString(name)
+}
+
 func ValidateEmail(email string) bool {
 	addr, err := mail.ParseAddress(email)
 	if addr == nil || err != nil {
 		return false
 	}
 	return addr.Name == ""
+}
+
+// Takes a name in the form "d/example" or "example.bit" and converts it to the
+// bareword "example". Returns an error if the input is in neither form.
+func ParseFuzzyDomainName(name string) (string, error) {
+	if strings.HasPrefix(name, "d/") {
+		return NamecoinKeyToBasename(name)
+	}
+	if len(name) > 0 && name[len(name)-1] == '.' {
+		name = name[0 : len(name)-1]
+	}
+	if strings.HasSuffix(name, ".bit") {
+		name = name[0 : len(name)-4]
+		if !ValidateDomainNameLabel(name) {
+			return "", fmt.Errorf("invalid domain name")
+		}
+		return name, nil
+	}
+	return "", fmt.Errorf("invalid domain name")
+}
+
+func ParseFuzzyDomainNameNC(name string) (bareName string, namecoinKey string, err error) {
+	name, err = ParseFuzzyDomainName(name)
+	if err != nil {
+		return "", "", err
+	}
+
+	return name, basenameToNamecoinKey(name), nil
 }
 
 // © 2014 Hugo Landau <hlandau@devever.net>    GPLv3 or later

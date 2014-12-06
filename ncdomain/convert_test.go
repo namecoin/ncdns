@@ -26,8 +26,8 @@ func TestSuite(t *testing.T) {
 				continue
 			}
 
-			v, err := ncdomain.ParseValue(k, jsonValue, resolve)
-			if err != nil {
+			v := ncdomain.ParseValue(k, jsonValue, resolve, nil)
+			if v == nil {
 				// TODO
 				continue
 			}

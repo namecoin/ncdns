@@ -9,6 +9,8 @@ import "github.com/hlandau/ncdns/ncdomain"
 import "sync"
 import "fmt"
 import "net"
+import "net/mail"
+import "strings"
 
 // Provides an abstract zone file for the Namecoin .bit TLD.
 type Backend struct {
@@ -23,24 +25,32 @@ const defaultMaxEntries = 100
 
 // Backend configuration.
 type Config struct {
+	NamecoinConn namecoin.Conn
+
 	// Username and password to use for connecting to the Namecoin JSON-RPC interface.
-	RPCUsername string
-	RPCPassword string
+	//RPCUsername string
+	//RPCPassword string
 
 	// hostname:port to use for connecting to the Namecoin JSON-RPC interface.
-	RPCAddress string
+	//RPCAddress string
 
 	// Maximum entries to permit in name cache. If zero, a default value is used.
 	CacheMaxEntries int
 
-	// The hostname which should be advertised as the primary nameserver for the zone.
-	// If left empty, a psuedo-hostname resolvable to SelfIP is used.
-	SelfName string
+	// Nameservers to advertise at zone apex. The first is considered the primary.
+	// If empty, a psuedo-hostname resolvable to SelfIP is used.
+	CanonicalNameservers []string
 
-	// Used only if SelfName is left blank. An IP which the internal psuedo-hostname
-	// should resolve to. This should be the public IP of the nameserver serving the
-	// zone expressed by this backend.
+	// Vanity IPs to place at the zone apex.
+	VanityIPs []net.IP
+
+	// Used only if CanonicalNameservers is left blank. An IP which the internal
+	// psuedo-hostname should resolve to. This should be the public IP of the
+	// nameserver serving the zone expressed by this backend.
 	SelfIP string
+
+	// Hostmaster in e. mail form (e.g. "hostmaster@example.com").
+	Hostmaster string
 
 	// Map names (like "d/example") to strings containing JSON values. Used to provide
 	// fake names for testing purposes. You don't need to use this.
@@ -52,18 +62,48 @@ func New(cfg *Config) (backend *Backend, err error) {
 	b := &Backend{}
 
 	b.cfg = *cfg
-	b.nc.Username = cfg.RPCUsername
-	b.nc.Password = cfg.RPCPassword
-	b.nc.Server = cfg.RPCAddress
+	b.nc = b.cfg.NamecoinConn
+	//b.nc.Username = cfg.RPCUsername
+	//b.nc.Password = cfg.RPCPassword
+	//b.nc.Server = cfg.RPCAddress
 
 	b.cache.MaxEntries = cfg.CacheMaxEntries
 	if b.cache.MaxEntries == 0 {
 		b.cache.MaxEntries = defaultMaxEntries
 	}
 
+	hostmaster, err := convertEmail(b.cfg.Hostmaster)
+	if err != nil {
+		return
+	}
+	b.cfg.Hostmaster = hostmaster
+
 	backend = b
 
 	return
+}
+
+func convertEmail(email string) (string, error) {
+	if email == "" {
+		return ".", nil
+	}
+
+	if util.ValidateHostName(email) {
+		return email, nil
+	}
+
+	addr, err := mail.ParseAddress(email)
+	if err != nil {
+		return "", err
+	}
+
+	email = addr.Address
+	parts := strings.SplitN(email, "@", 2)
+	if len(parts) < 2 {
+		return "", fmt.Errorf("invalid e. mail address specified")
+	}
+
+	return dns.Fqdn(parts[0] + "." + parts[1]), nil
 }
 
 // Do low-level queries against an abstract zone file. This is the per-query
@@ -111,7 +151,7 @@ func (tx *btx) Do() (rrs []dns.RR, err error) {
 	// it generates one under a special meta domain "x--nmc". This domain is not
 	// a valid Namecoin domain name, so it does not confict with the Namecoin
 	// domain name namespace.
-	if tx.basename == "x--nmc" && tx.b.cfg.SelfName == "" {
+	if tx.basename == "x--nmc" && len(tx.b.cfg.CanonicalNameservers) == 0 {
 		return tx.doMetaDomain()
 	}
 
@@ -125,9 +165,9 @@ func (tx *btx) determineDomain() (subname, basename, rootname string, err error)
 }
 
 func (tx *btx) doRootDomain() (rrs []dns.RR, err error) {
-	nsname := tx.b.cfg.SelfName
-	if nsname == "" {
-		nsname = "this.x--nmc." + tx.rootname
+	nss := tx.b.cfg.CanonicalNameservers
+	if len(tx.b.cfg.CanonicalNameservers) == 0 {
+		nss = []string{dns.Fqdn("this.x--nmc." + tx.rootname)}
 	}
 
 	soa := &dns.SOA{
@@ -137,8 +177,8 @@ func (tx *btx) doRootDomain() (rrs []dns.RR, err error) {
 			Class:  dns.ClassINET,
 			Rrtype: dns.TypeSOA,
 		},
-		Ns:      dns.Fqdn(nsname),
-		Mbox:    ".",
+		Ns:      nss[0],
+		Mbox:    tx.b.cfg.Hostmaster,
 		Serial:  1,
 		Refresh: 600,
 		Retry:   600,
@@ -146,17 +186,48 @@ func (tx *btx) doRootDomain() (rrs []dns.RR, err error) {
 		Minttl:  600,
 	}
 
-	ns := &dns.NS{
-		Hdr: dns.RR_Header{
-			Name:   dns.Fqdn(tx.rootname),
-			Ttl:    86400,
-			Class:  dns.ClassINET,
-			Rrtype: dns.TypeNS,
-		},
-		Ns: dns.Fqdn(nsname),
+	rrs = make([]dns.RR, 0, 1+len(nss)+len(tx.b.cfg.VanityIPs))
+	rrs = append(rrs, soa)
+	for _, cn := range nss {
+		ns := &dns.NS{
+			Hdr: dns.RR_Header{
+				Name:   dns.Fqdn(tx.rootname),
+				Ttl:    86400,
+				Class:  dns.ClassINET,
+				Rrtype: dns.TypeNS,
+			},
+			Ns: dns.Fqdn(cn),
+		}
+
+		rrs = append(rrs, ns)
 	}
 
-	rrs = []dns.RR{soa, ns}
+	for _, ip := range tx.b.cfg.VanityIPs {
+		if ip.To4() != nil {
+			a := &dns.A{
+				Hdr: dns.RR_Header{
+					Name:   dns.Fqdn(tx.rootname),
+					Ttl:    86400,
+					Class:  dns.ClassINET,
+					Rrtype: dns.TypeA,
+				},
+				A: ip,
+			}
+			rrs = append(rrs, a)
+		} else {
+			a := &dns.AAAA{
+				Hdr: dns.RR_Header{
+					Name:   dns.Fqdn(tx.rootname),
+					Ttl:    86400,
+					Class:  dns.ClassINET,
+					Rrtype: dns.TypeAAAA,
+				},
+				AAAA: ip,
+			}
+			rrs = append(rrs, a)
+		}
+	}
+
 	return
 }
 
@@ -277,9 +348,9 @@ func (b *Backend) resolveName(name string) (jsonValue string, err error) {
 func (b *Backend) jsonToDomain(name, jsonValue string) (*domain, error) {
 	d := &domain{}
 
-	v, err := ncdomain.ParseValue(name, jsonValue, b.resolveExtraName)
-	if err != nil {
-		return nil, err
+	v := ncdomain.ParseValue(name, jsonValue, b.resolveExtraName, nil)
+	if v == nil {
+		return nil, fmt.Errorf("couldn't parse value")
 	}
 
 	d.ncv = v

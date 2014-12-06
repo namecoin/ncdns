@@ -7,6 +7,12 @@ import "github.com/hlandau/ncdns/namecoin/extratypes"
 
 import "sync/atomic"
 import "fmt"
+import "expvar"
+
+var cQueryCalls = expvar.NewInt("ncdns.namecoin.numQueryCalls")
+var cSyncCalls = expvar.NewInt("ncdns.namecoin.numSyncCalls")
+var cFilterCalls = expvar.NewInt("ncdns.namecoin.numFilterCalls")
+var cCurHeightCalls = expvar.NewInt("ncdns.namecoin.numCurHeightCalls")
 
 // Used for generating IDs for JSON-RPC requests.
 var idCounter int32
@@ -27,6 +33,8 @@ type Conn struct {
 // If the domain exists, returns the value stored in Namecoin, which should be JSON.
 // Note that this will return domain data even if the domain is expired.
 func (nc *Conn) Query(name string) (v string, err error) {
+	cQueryCalls.Add(1)
+
 	cmd, err := extratypes.NewNameShowCmd(newID(), name)
 	if err != nil {
 		//log.Info("NC NEWCMD ", err)
@@ -65,6 +73,8 @@ var ErrSyncNoSuchBlock = fmt.Errorf("no block exists with given hash")
 const rpcInvalidAddressOrKey = -5
 
 func (nc *Conn) Sync(hash string, count int, wait bool) ([]extratypes.NameSyncEvent, error) {
+	cSyncCalls.Add(1)
+
 	cmd, err := extratypes.NewNameSyncCmd(newID(), hash, count, wait)
 	if err != nil {
 		return nil, err
@@ -94,6 +104,8 @@ func (nc *Conn) Sync(hash string, count int, wait bool) ([]extratypes.NameSyncEv
 }
 
 func (nc *Conn) CurHeight() (int, error) {
+	cCurHeightCalls.Add(1)
+
 	cmd, err := btcjson.NewGetInfoCmd(newID())
 	if err != nil {
 		return 0, err
@@ -120,6 +132,8 @@ func (nc *Conn) CurHeight() (int, error) {
 }
 
 func (nc *Conn) Filter(regexp string, maxage, from, count int) (names []extratypes.NameFilterItem, err error) {
+	cFilterCalls.Add(1)
+
 	cmd, err := extratypes.NewNameFilterCmd(newID(), regexp, maxage, from, count)
 	if err != nil {
 		return nil, err
