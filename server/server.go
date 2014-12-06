@@ -63,13 +63,15 @@ func NewServer(cfg *ServerConfig) (s *Server, err error) {
 		s.cfg.canonicalNameservers[i] = dns.Fqdn(s.cfg.canonicalNameservers[i])
 	}
 
-	vanityIPs := strings.Split(s.cfg.VanityIPs, ",")
-	for _, ips := range vanityIPs {
-		ip := net.ParseIP(ips)
-		if ip == nil {
-			return nil, fmt.Errorf("Couldn't parse IP: %s", ips)
+	if s.cfg.VanityIPs != "" {
+		vanityIPs := strings.Split(s.cfg.VanityIPs, ",")
+		for _, ips := range vanityIPs {
+			ip := net.ParseIP(ips)
+			if ip == nil {
+				return nil, fmt.Errorf("Couldn't parse IP: %s", ips)
+			}
+			s.cfg.vanityIPs = append(s.cfg.vanityIPs, ip)
 		}
-		s.cfg.vanityIPs = append(s.cfg.vanityIPs, ip)
 	}
 
 	s.namecoinConn = namecoin.Conn{
