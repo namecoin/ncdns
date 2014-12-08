@@ -327,7 +327,7 @@ type rawValue struct {
 	TXT        interface{} `json:"txt"`
 	Hostmaster interface{} `json:"email"` // Hostmaster
 	MX         interface{} `json:"mx"`
-	TLSA       interface{} `json:"tlsa"`
+	TLSA       interface{} `json:"tls"`
 
 	Map json.RawMessage `json:"map"`
 
