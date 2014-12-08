@@ -315,27 +315,6 @@ func (v *Value) findSubdomainByName(subdomain string) (*Value, error) {
 	return nil, fmt.Errorf("subdomain part not found: %s", head)
 }
 
-type rawValue_old struct {
-	IP         interface{} `json:"ip"`
-	IP6        interface{} `json:"ip6"`
-	NS         interface{} `json:"ns"`
-	nsSet      map[string]struct{}
-	DNS        interface{} `json:"dns"` // actually an alias for NS
-	Alias      interface{} `json:"alias"`
-	Translate  interface{} `json:"translate"`
-	DS         interface{} `json:"ds"`
-	TXT        interface{} `json:"txt"`
-	Hostmaster interface{} `json:"email"` // Hostmaster
-	MX         interface{} `json:"mx"`
-	TLSA       interface{} `json:"tls"`
-
-	Map json.RawMessage `json:"map"`
-
-	Service  interface{} `json:"service"`
-	Import   interface{} `json:"import"`
-	Delegate interface{} `json:"delegate"`
-}
-
 type ResolveFunc func(name string) (string, error)
 type ErrorFunc func(err error, isWarning bool)
 
