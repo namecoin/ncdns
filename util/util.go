@@ -1,7 +1,6 @@
 package util
 
 import "strings"
-import "github.com/miekg/dns"
 import "github.com/hlandau/madns/merr"
 import "fmt"
 import "regexp"
@@ -94,7 +93,7 @@ func SplitDomainByFloatingAnchor(qname, anchor string) (subname, basename, rootn
 // Convert a domain name basename (e.g. "example") to a Namecoin domain name
 // key name ("d/example").
 func BasenameToNamecoinKey(basename string) (string, error) {
-	if !ValidateDomainNameLabel(basename) {
+	if !ValidateDomainLabel(basename) {
 		return "", fmt.Errorf("invalid domain name")
 	}
 	return basenameToNamecoinKey(basename), nil
@@ -112,12 +111,94 @@ func NamecoinKeyToBasename(key string) (string, error) {
 	}
 
 	key = key[2:]
-	if !ValidateDomainNameLabel(key) {
+	if !ValidateDomainLabel(key) {
 		return "", fmt.Errorf("not a valid domain name key")
 	}
 
 	return key, nil
 }
+
+// An owner name is any technically valid DNS name. RFC 2181 permits binary
+// data in DNS labels (!), but this is ridiculous. The conventions which appear
+// to be enforced by web browsers are used.
+const sre_ownerLabel = `([a-z0-9_]|[a-z0-9_][a-z0-9_-]{0,61}[a-z0-9_])`
+const sre_ownerName = `(` + sre_ownerLabel + `\.)*` + sre_ownerLabel + `\.?`             // must check length
+const sre_relOwnerName = `(|@|(` + sre_ownerLabel + `\.)*` + sre_ownerLabel + `(\.@?)?)` // must check length
+var re_ownerLabel = regexp.MustCompilePOSIX(`^` + sre_ownerLabel + `$`)
+var re_ownerName = regexp.MustCompilePOSIX(`^` + sre_ownerName + `$`)
+var re_relOwnerName = regexp.MustCompilePOSIX(`^` + sre_relOwnerName + `$`)
+
+const sre_domainLabel = `(xn--)?([a-z0-9]+-)*[a-z0-9]+`                                     // must check length
+const sre_domainName = `(` + sre_domainLabel + `\.)*` + sre_domainLabel + `\.?`             // must check length
+const sre_relDomainName = `(|@|(` + sre_domainLabel + `\.)*` + sre_domainLabel + `(\.@?)?)` // must check length
+var re_domainLabel = regexp.MustCompilePOSIX(`^` + sre_domainLabel + `$`)
+var re_domainName = regexp.MustCompilePOSIX(`^` + sre_domainName + `$`)
+var re_relDomainName = regexp.MustCompilePOSIX(`^` + sre_relDomainName + `$`)
+
+const sre_hostLabel = `([a-z0-9]|[a-z0-9][a-z0-9-]*[a-z0-9])`                         // must check length
+const sre_hostName = sre_hostLabel + `(\.` + sre_hostLabel + `)*\.?`                  // must check length
+const sre_relHostName = `(|@|(` + sre_hostLabel + `\.)*` + sre_hostLabel + `(\.@?)?)` // must check length
+var re_hostLabel = regexp.MustCompilePOSIX(`^` + sre_hostLabel + `$`)
+var re_hostName = regexp.MustCompilePOSIX(`^` + sre_hostName + `$`)
+var re_relHostName = regexp.MustCompilePOSIX(`^` + sre_relHostName + `$`)
+
+func ValidateLabelLength(label string) bool {
+	return len(label) <= 63
+}
+
+func ValidateNameLength(name string) bool {
+	return len(name) <= 255 || (name[len(name)-1] == '.' && len(name) <= 256)
+}
+
+func ValidateOwnerLabel(label string) bool {
+	return ValidateLabelLength(label) && re_ownerLabel.MatchString(label)
+}
+
+func ValidateServiceName(label string) bool {
+	return len(label) <= 62 && ValidateOwnerLabel(label)
+}
+
+func ValidateOwnerName(name string) bool {
+	return ValidateNameLength(name) && re_ownerName.MatchString(name)
+}
+
+func ValidateRelOwnerName(name string) bool {
+	return ValidateNameLength(name) && re_relOwnerName.MatchString(name)
+}
+
+func ValidateDomainLabel(label string) bool {
+	return ValidateLabelLength(label) && re_domainLabel.MatchString(label)
+}
+
+func ValidateDomainName(name string) bool {
+	return ValidateNameLength(name) && re_domainName.MatchString(name)
+}
+
+func ValidateRelDomainName(name string) bool {
+	return ValidateNameLength(name) && re_relDomainName.MatchString(name)
+}
+
+func ValidateHostLabel(label string) bool {
+	return ValidateLabelLength(label) && re_hostLabel.MatchString(label)
+}
+
+func ValidateHostName(name string) bool {
+	return ValidateNameLength(name) && re_hostName.MatchString(name)
+}
+
+func ValidateRelHostName(name string) bool {
+	return ValidateNameLength(name) && re_relHostName.MatchString(name)
+}
+
+/*
+var re_ownerName  = regexp.MustCompilePOSIX(`^([a-z0-9_][a-z0-9_-]{0,62}\.)*[a-z0-9_][a-z0-9_-]{0,62}\.?$`)
+var re_ownerLabel = regexp.MustCompilePOSIX(`^([a-z0-9_]{1,2}|[a-z0-9_][a-z0-9_-]{0,61}[a-z0-9_])$`)
+
+// A domain name is an owner name complying with the standard rules applied to
+// domain names: No consecutive hyphens except as allowed by IDN, no underscores.
+var re_domainName = regexp.MustCompilePOSIX(`^(([a-z0-9]+-)*[a-z0-9]+\.)*$`)
+
+
 
 // This is used to validate NS records, targets in SRV records, etc. In these cases
 // an IP address is not allowed. Therefore this regex must exclude all-numeric domain names.
@@ -147,7 +228,7 @@ func ValidateDomainNameLabel(name string) bool {
 
 func ValidateOwnerName(name string) bool {
 	return len(name) <= 255 && re_ownerName.MatchString(name)
-}
+}*/
 
 func ValidateEmail(email string) bool {
 	addr, err := mail.ParseAddress(email)
@@ -168,7 +249,7 @@ func ParseFuzzyDomainName(name string) (string, error) {
 	}
 	if strings.HasSuffix(name, ".bit") {
 		name = name[0 : len(name)-4]
-		if !ValidateDomainNameLabel(name) {
+		if !ValidateDomainLabel(name) {
 			return "", fmt.Errorf("invalid domain name")
 		}
 		return name, nil

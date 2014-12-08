@@ -284,7 +284,7 @@ func (v *Value) RRsRecursive(out []dns.RR, suffix, apexSuffix string) ([]dns.RR,
 	}
 
 	for mk, mv := range v.Map {
-		if !util.ValidateLabel(mk) && mk != "" && mk != "*" {
+		if !util.ValidateOwnerLabel(mk) && mk != "" && mk != "*" {
 			continue
 		}
 
@@ -572,7 +572,7 @@ func parseAlias(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname 
 	}
 
 	if s, ok := alias.(string); ok {
-		if !util.ValidateOwnerName(s) {
+		if !util.ValidateRelOwnerName(s) {
 			errFunc.add(fmt.Errorf("malformed alias name"))
 			return
 		}
@@ -598,7 +598,7 @@ func parseTranslate(rv map[string]interface{}, v *Value, errFunc ErrorFunc, reln
 	}
 
 	if s, ok := translate.(string); ok {
-		if !util.ValidateOwnerName(s) {
+		if !util.ValidateRelOwnerName(s) {
 			errFunc.add(fmt.Errorf("malformed translate name"))
 			return
 		}
