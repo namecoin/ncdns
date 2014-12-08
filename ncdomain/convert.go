@@ -315,7 +315,7 @@ func (v *Value) findSubdomainByName(subdomain string) (*Value, error) {
 	return nil, fmt.Errorf("subdomain part not found: %s", head)
 }
 
-type rawValue struct {
+type rawValue_old struct {
 	IP         interface{} `json:"ip"`
 	IP6        interface{} `json:"ip6"`
 	NS         interface{} `json:"ns"`
@@ -363,10 +363,10 @@ func (ef ErrorFunc) addWarning(err error) {
 // continues and recovers as much as possible; errFunc is called for all errors
 // and warnings if specified.
 func ParseValue(name, jsonValue string, resolve ResolveFunc, errFunc ErrorFunc) (value *Value) {
-	rv := &rawValue{}
+	var rv interface{}
 	v := &Value{}
 
-	err := json.Unmarshal([]byte(jsonValue), rv)
+	err := json.Unmarshal([]byte(jsonValue), &rv)
 	if err != nil {
 		errFunc.add(err)
 		return
@@ -381,14 +381,20 @@ func ParseValue(name, jsonValue string, resolve ResolveFunc, errFunc ErrorFunc) 
 	mergedNames := map[string]struct{}{}
 	mergedNames[name] = struct{}{}
 
-	rv.parse(v, resolve, errFunc, 0, 0, "", "", mergedNames)
+	parse(rv, v, resolve, errFunc, 0, 0, "", "", mergedNames)
 	v.IsTopLevel = true
 
 	value = v
 	return
 }
 
-func (rv *rawValue) parse(v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, subdomain, relname string, mergedNames map[string]struct{}) {
+func parse(rv interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, subdomain, relname string, mergedNames map[string]struct{}) {
+	rvm, ok := rv.(map[string]interface{})
+	if !ok {
+		errFunc.add(fmt.Errorf("value is not an object"))
+		return
+	}
+
 	if depth > depthLimit {
 		errFunc.add(fmt.Errorf("depth limit exceeded"))
 		return
@@ -401,24 +407,28 @@ func (rv *rawValue) parse(v *Value, resolve ResolveFunc, errFunc ErrorFunc, dept
 		v = &Value{}
 	}
 
-	ok, _ := rv.parseDelegate(v, resolve, errFunc, depth, mergeDepth, relname, mergedNames)
+	ok, _ = parseDelegate(rvm, v, resolve, errFunc, depth, mergeDepth, relname, mergedNames)
 	if ok {
 		return
 	}
 
-	rv.parseImport(v, resolve, errFunc, depth, mergeDepth, relname, mergedNames)
-	rv.parseIP(v, errFunc, rv.IP, false)
-	rv.parseIP(v, errFunc, rv.IP6, true)
-	rv.parseNS(v, errFunc, relname)
-	rv.parseAlias(v, errFunc, relname)
-	rv.parseTranslate(v, errFunc, relname)
-	rv.parseHostmaster(v, errFunc)
-	rv.parseDS(v, errFunc)
-	rv.parseTXT(v, errFunc)
-	rv.parseService(v, errFunc, relname)
-	rv.parseMX(v, errFunc, relname)
-	rv.parseTLSA(v, errFunc)
-	rv.parseMap(v, resolve, errFunc, depth, mergeDepth, relname)
+	parseImport(rvm, v, resolve, errFunc, depth, mergeDepth, relname, mergedNames)
+	if ip, ok := rvm["ip"]; ok {
+		parseIP(rvm, v, errFunc, ip, false)
+	}
+	if ip6, ok := rvm["ip6"]; ok {
+		parseIP(rvm, v, errFunc, ip6, true)
+	}
+	parseNS(rvm, v, errFunc, relname)
+	parseAlias(rvm, v, errFunc, relname)
+	parseTranslate(rvm, v, errFunc, relname)
+	parseHostmaster(rvm, v, errFunc)
+	parseDS(rvm, v, errFunc)
+	parseTXT(rvm, v, errFunc)
+	parseService(rvm, v, errFunc, relname)
+	parseMX(rvm, v, errFunc, relname)
+	parseTLSA(rvm, v, errFunc)
+	parseMap(rvm, v, resolve, errFunc, depth, mergeDepth, relname)
 	v.moveEmptyMapItems()
 
 	if subdomain != "" {
@@ -464,8 +474,8 @@ func (v *Value) qualify(name, suffix, apexSuffix string) (string, bool) {
 	return s, true
 }
 
-func (rv *rawValue) parseMerge(mergeValue string, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, subdomain, relname string, mergedNames map[string]struct{}) error {
-	rv2 := &rawValue{}
+func parseMerge(rv map[string]interface{}, mergeValue string, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, subdomain, relname string, mergedNames map[string]struct{}) error {
+	var rv2 interface{}
 
 	if mergeDepth > mergeDepthLimit {
 		err := fmt.Errorf("merge depth limit exceeded")
@@ -473,30 +483,32 @@ func (rv *rawValue) parseMerge(mergeValue string, v *Value, resolve ResolveFunc,
 		return err
 	}
 
-	err := json.Unmarshal([]byte(mergeValue), rv2)
+	err := json.Unmarshal([]byte(mergeValue), &rv2)
 	if err != nil {
 		err = fmt.Errorf("couldn't parse JSON to be merged: %v", err)
 		errFunc.add(err)
 		return err
 	}
 
-	rv2.parse(v, resolve, errFunc, depth, mergeDepth, subdomain, relname, mergedNames)
+	parse(rv2, v, resolve, errFunc, depth, mergeDepth, subdomain, relname, mergedNames)
 	return nil
 }
 
-func (rv *rawValue) parseIP(v *Value, errFunc ErrorFunc, ipi interface{}, ipv6 bool) {
-	if ipi != nil {
-		if ipv6 {
-			v.IP6 = nil
-		} else {
-			v.IP = nil
-		}
+func parseIP(rv map[string]interface{}, v *Value, errFunc ErrorFunc, ipi interface{}, ipv6 bool) {
+	if ipv6 {
+		v.IP6 = nil
+	} else {
+		v.IP = nil
+	}
+
+	if ipi == nil {
+		return
 	}
 
 	if ipa, ok := ipi.([]interface{}); ok {
 		for _, ip := range ipa {
 			if ips, ok := ip.(string); ok {
-				rv.addIP(v, errFunc, ips, ipv6)
+				addIP(rv, v, errFunc, ips, ipv6)
 			}
 		}
 
@@ -504,11 +516,11 @@ func (rv *rawValue) parseIP(v *Value, errFunc ErrorFunc, ipi interface{}, ipv6 b
 	}
 
 	if ip, ok := ipi.(string); ok {
-		rv.addIP(v, errFunc, ip, ipv6)
+		addIP(rv, v, errFunc, ip, ipv6)
 	}
 }
 
-func (rv *rawValue) addIP(v *Value, errFunc ErrorFunc, ips string, ipv6 bool) {
+func addIP(rv map[string]interface{}, v *Value, errFunc ErrorFunc, ips string, ipv6 bool) {
 	pip := net.ParseIP(ips)
 	if pip == nil || (pip.To4() == nil) != ipv6 {
 		errFunc.add(fmt.Errorf("malformed IP: %s", ips))
@@ -522,54 +534,70 @@ func (rv *rawValue) addIP(v *Value, errFunc ErrorFunc, ips string, ipv6 bool) {
 	}
 }
 
-func (rv *rawValue) parseNS(v *Value, errFunc ErrorFunc, relname string) {
+func parseNS(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
 	// "dns" takes precedence
-	if rv.DNS != nil {
-		rv.NS = rv.DNS
+	if dns, ok := rv["dns"]; ok && dns != nil {
+		rv["ns"] = dns
 	}
 
-	if rv.NS == nil {
+	ns, ok := rv["ns"]
+	if !ok || ns == nil {
 		return
 	}
 
 	v.NS = nil
 
-	if rv.nsSet == nil {
-		rv.nsSet = map[string]struct{}{}
+	if _, ok := rv["_nsSet"]; !ok {
+		rv["_nsSet"] = map[string]struct{}{}
 	}
 
-	switch rv.NS.(type) {
+	switch ns.(type) {
 	case []interface{}:
-		for _, si := range rv.NS.([]interface{}) {
+		for _, si := range ns.([]interface{}) {
 			s, ok := si.(string)
 			if !ok {
 				continue
 			}
-			rv.addNS(v, s, relname)
+			addNS(rv, v, errFunc, s, relname)
 		}
 		return
 	case string:
-		s := rv.NS.(string)
-		rv.addNS(v, s, relname)
+		s := ns.(string)
+		addNS(rv, v, errFunc, s, relname)
 		return
 	default:
 		errFunc.add(fmt.Errorf("unknown NS field format"))
 	}
 }
 
-func (rv *rawValue) addNS(v *Value, s, relname string) {
-	if _, ok := rv.nsSet[s]; !ok {
+func addNS(rv map[string]interface{}, v *Value, errFunc ErrorFunc, s, relname string) {
+	if !util.ValidateOwnerName(s) {
+		errFunc.add(fmt.Errorf("malformed domain name in NS field"))
+	}
+	if _, ok := (rv["_nsSet"].(map[string]struct{}))[s]; !ok {
 		v.NS = append(v.NS, s)
-		rv.nsSet[s] = struct{}{}
+		(rv["_nsSet"].(map[string]struct{}))[s] = struct{}{}
 	}
 }
 
-func (rv *rawValue) parseAlias(v *Value, errFunc ErrorFunc, relname string) {
-	if rv.Alias == nil {
+func parseAlias(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
+	alias, ok := rv["alias"]
+	if !ok {
 		return
 	}
 
-	if s, ok := rv.Alias.(string); ok {
+	if alias == nil {
+		v.Alias = ""
+		v.HasAlias = false
+		return
+	}
+
+	if s, ok := alias.(string); ok {
+		if !util.ValidateOwnerName(s) {
+			errFunc.add(fmt.Errorf("malformed alias name"))
+			return
+		}
+
 		v.Alias = s
 		v.HasAlias = true
 		return
@@ -578,12 +606,23 @@ func (rv *rawValue) parseAlias(v *Value, errFunc ErrorFunc, relname string) {
 	errFunc.add(fmt.Errorf("unknown alias field format"))
 }
 
-func (rv *rawValue) parseTranslate(v *Value, errFunc ErrorFunc, relname string) {
-	if rv.Translate == nil {
+func parseTranslate(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
+	translate, ok := rv["translate"]
+	if !ok {
 		return
 	}
 
-	if s, ok := rv.Translate.(string); ok {
+	if translate == nil {
+		v.Translate = ""
+		v.HasTranslate = false
+		return
+	}
+
+	if s, ok := translate.(string); ok {
+		if !util.ValidateOwnerName(s) {
+			errFunc.add(fmt.Errorf("malformed translate name"))
+			return
+		}
 		v.Translate = s
 		v.HasTranslate = true
 		return
@@ -610,15 +649,16 @@ func isAllString(x []interface{}) bool {
 	return true
 }
 
-func (rv *rawValue) parseImportImpl(val *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string, mergedNames map[string]struct{}, delegate bool) (bool, error) {
+func parseImportImpl(rv map[string]interface{}, val *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string, mergedNames map[string]struct{}, delegate bool) (bool, error) {
 	var err error
 	succeeded := false
-	src := rv.Import
+	xname := "import"
 	if delegate {
-		src = rv.Delegate
+		xname = "delegate"
 	}
 
-	if src == nil {
+	src, ok := rv[xname]
+	if !ok || src == nil {
 		return false, nil
 	}
 
@@ -665,7 +705,7 @@ func (rv *rawValue) parseImportImpl(val *Value, resolve ResolveFunc, errFunc Err
 
 					mergedNames[k] = struct{}{}
 
-					err = rv.parseMerge(dv, val, resolve, errFunc, depth, mergeDepth+1, subs, relname, mergedNames)
+					err = parseMerge(rv, dv, val, resolve, errFunc, depth, mergeDepth+1, subs, relname, mergedNames)
 					if err != nil {
 						errFunc.add(err)
 						continue
@@ -690,21 +730,22 @@ func (rv *rawValue) parseImportImpl(val *Value, resolve ResolveFunc, errFunc Err
 	return succeeded, err
 }
 
-func (rv *rawValue) parseImport(v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string, mergedNames map[string]struct{}) error {
-	_, err := rv.parseImportImpl(v, resolve, errFunc, depth, mergeDepth, relname, mergedNames, false)
+func parseImport(rv map[string]interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string, mergedNames map[string]struct{}) error {
+	_, err := parseImportImpl(rv, v, resolve, errFunc, depth, mergeDepth, relname, mergedNames, false)
 	return err
 }
 
-func (rv *rawValue) parseDelegate(v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string, mergedNames map[string]struct{}) (bool, error) {
-	return rv.parseImportImpl(v, resolve, errFunc, depth, mergeDepth, relname, mergedNames, true)
+func parseDelegate(rv map[string]interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string, mergedNames map[string]struct{}) (bool, error) {
+	return parseImportImpl(rv, v, resolve, errFunc, depth, mergeDepth, relname, mergedNames, true)
 }
 
-func (rv *rawValue) parseHostmaster(v *Value, errFunc ErrorFunc) {
-	if rv.Hostmaster == nil {
+func parseHostmaster(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
+	hm, ok := rv["email"]
+	if !ok || hm == nil {
 		return
 	}
 
-	if s, ok := rv.Hostmaster.(string); ok {
+	if s, ok := hm.(string); ok {
 		if !util.ValidateEmail(s) {
 			errFunc.add(fmt.Errorf("malformed e. mail address in email field"))
 			return
@@ -717,14 +758,15 @@ func (rv *rawValue) parseHostmaster(v *Value, errFunc ErrorFunc) {
 	errFunc.add(fmt.Errorf("unknown email field format"))
 }
 
-func (rv *rawValue) parseDS(v *Value, errFunc ErrorFunc) {
-	if rv.DS == nil {
+func parseDS(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
+	rds, ok := rv["ds"]
+	if !ok || rds == nil {
 		return
 	}
 
 	v.DS = nil
 
-	if dsa, ok := rv.DS.([]interface{}); ok {
+	if dsa, ok := rds.([]interface{}); ok {
 		for _, ds1 := range dsa {
 			if ds, ok := ds1.([]interface{}); ok {
 				if len(ds) < 4 {
@@ -780,14 +822,15 @@ func (rv *rawValue) parseDS(v *Value, errFunc ErrorFunc) {
 	errFunc.add(fmt.Errorf("malformed DS field format"))
 }
 
-func (rv *rawValue) parseTLSA(v *Value, errFunc ErrorFunc) {
-	if rv.TLSA == nil {
+func parseTLSA(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
+	tlsa, ok := rv["tls"]
+	if !ok || tlsa == nil {
 		return
 	}
 
 	v.TLSA = nil
 
-	if tlsaa, ok := rv.TLSA.([]interface{}); ok {
+	if tlsaa, ok := tlsa.([]interface{}); ok {
 		for _, tlsa1 := range tlsaa {
 			if tlsa, ok := tlsa1.([]interface{}); ok {
 				// Format: ["443", "tcp", 1, 2, 3, "base64 certificate data"]
@@ -868,12 +911,13 @@ func (rv *rawValue) parseTLSA(v *Value, errFunc ErrorFunc) {
 	errFunc.add(fmt.Errorf("Malformed TLSA field format"))
 }
 
-func (rv *rawValue) parseTXT(v *Value, errFunc ErrorFunc) {
-	if rv.TXT == nil {
+func parseTXT(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
+	rtxt, ok := rv["txt"]
+	if !ok || rtxt == nil {
 		return
 	}
 
-	if txta, ok := rv.TXT.([]interface{}); ok {
+	if txta, ok := rtxt.([]interface{}); ok {
 		// ["...", "..."] or [["...", "..."], ["...", "..."]]
 		for _, vv := range txta {
 			if sa, ok := vv.([]interface{}); ok {
@@ -896,7 +940,7 @@ func (rv *rawValue) parseTXT(v *Value, errFunc ErrorFunc) {
 		}
 	} else {
 		// "..."
-		if s, ok := rv.TXT.(string); ok {
+		if s, ok := rtxt.(string); ok {
 			v.TXT = append(v.TXT, segmentizeTXT(s))
 		} else {
 			errFunc.add(fmt.Errorf("malformed TXT value"))
@@ -934,14 +978,15 @@ func segmentizeTXT(txt string) (a []string) {
 	return
 }
 
-func (rv *rawValue) parseMX(v *Value, errFunc ErrorFunc, relname string) {
-	if rv.MX == nil {
+func parseMX(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
+	rmx, ok := rv["mx"]
+	if !ok || rmx == nil {
 		return
 	}
 
-	if sa, ok := rv.MX.([]interface{}); ok {
+	if sa, ok := rmx.([]interface{}); ok {
 		for _, s := range sa {
-			rv.parseSingleMX(s, v, errFunc, relname)
+			parseSingleMX(rv, s, v, errFunc, relname)
 		}
 		return
 	}
@@ -949,7 +994,7 @@ func (rv *rawValue) parseMX(v *Value, errFunc ErrorFunc, relname string) {
 	errFunc.add(fmt.Errorf("malformed MX value"))
 }
 
-func (rv *rawValue) parseSingleMX(s interface{}, v *Value, errFunc ErrorFunc, relname string) {
+func parseSingleMX(rv map[string]interface{}, s interface{}, v *Value, errFunc ErrorFunc, relname string) {
 	sa, ok := s.([]interface{})
 	if !ok {
 		errFunc.add(fmt.Errorf("malformed MX value"))
@@ -982,8 +1027,9 @@ func (rv *rawValue) parseSingleMX(s interface{}, v *Value, errFunc ErrorFunc, re
 	return
 }
 
-func (rv *rawValue) parseService(v *Value, errFunc ErrorFunc, relname string) {
-	if rv.Service == nil {
+func parseService(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
+	rsvc, ok := rv["service"]
+	if !ok || rsvc == nil {
 		return
 	}
 
@@ -993,9 +1039,9 @@ func (rv *rawValue) parseService(v *Value, errFunc ErrorFunc, relname string) {
 	oldServices := v.Service
 	v.Service = nil
 
-	if sa, ok := rv.Service.([]interface{}); ok {
+	if sa, ok := rsvc.([]interface{}); ok {
 		for _, s := range sa {
-			rv.parseSingleService(s, v, errFunc, relname, servicesUsed)
+			parseSingleService(rv, s, v, errFunc, relname, servicesUsed)
 		}
 	} else {
 		errFunc.add(fmt.Errorf("malformed service value"))
@@ -1008,7 +1054,7 @@ func (rv *rawValue) parseService(v *Value, errFunc ErrorFunc, relname string) {
 	}
 }
 
-func (rv *rawValue) parseSingleService(svc interface{}, v *Value, errFunc ErrorFunc, relname string, servicesUsed map[string]struct{}) {
+func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, errFunc ErrorFunc, relname string, servicesUsed map[string]struct{}) {
 	svca, ok := svc.([]interface{})
 	if !ok {
 		errFunc.add(fmt.Errorf("malformed service value"))
@@ -1075,45 +1121,40 @@ func (rv *rawValue) parseSingleService(svc interface{}, v *Value, errFunc ErrorF
 	return
 }
 
-func (rv *rawValue) parseMap(v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string) {
-	if rv.Map == nil {
+func parseMap(rv map[string]interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string) {
+	rmap, ok := rv["map"]
+	if !ok || rmap == nil {
 		return
 	}
 
-	m := map[string]json.RawMessage{}
-
-	err := json.Unmarshal(rv.Map, &m)
-	if err != nil {
-		errFunc.add(fmt.Errorf("Couldn't unmarshal map: %v", err))
+	m, ok := rmap.(map[string]interface{})
+	if !ok {
+		errFunc.add(fmt.Errorf("Map value must be an object"))
 		return
 	}
 
 	for mk, mv := range m {
-		rv2 := &rawValue{}
-		v2 := &Value{}
-
-		var s string
-		err := json.Unmarshal(mv, &s)
-		if err == nil {
+		if s, ok := mv.(string); ok {
 			// deprecated case: "map": { "": "127.0.0.1" }
-			rv2.IP = s
-		} else {
-			// normal case: "map": { "": { ... } }
-			err = json.Unmarshal(mv, rv2)
-			if err != nil {
-				errFunc.add(fmt.Errorf("Couldn't unmarshal map: %v", err))
-				continue
+			mv = map[string]interface{}{"ip": []interface{}{s}}
+			m[mk] = mv
+		}
+
+		if mvm, ok := mv.(map[string]interface{}); ok {
+			v2 := &Value{}
+			mergedNames := map[string]struct{}{}
+			parse(mvm, v2, resolve, errFunc, depth+1, mergeDepth, "", relname, mergedNames)
+
+			if v.Map == nil {
+				v.Map = make(map[string]*Value)
 			}
+
+			v.Map[mk] = v2
+
+		} else {
+			errFunc.add(fmt.Errorf("Value in map object must be an object or string"))
+			continue
 		}
-
-		mergedNames := map[string]struct{}{}
-		rv2.parse(v2, resolve, errFunc, depth+1, mergeDepth, "", relname, mergedNames)
-
-		if v.Map == nil {
-			v.Map = make(map[string]*Value)
-		}
-
-		v.Map[mk] = v2
 	}
 }
 

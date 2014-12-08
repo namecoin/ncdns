@@ -9,11 +9,13 @@ import "path/filepath"
 import "io"
 import "bufio"
 import "testing"
+import "strconv"
 
 type TestItem struct {
-	ID      string
-	Names   map[string]string
-	Records string
+	ID        string
+	Names     map[string]string
+	Records   string
+	NumErrors int
 }
 
 func stripTag(L string) string {
@@ -100,8 +102,17 @@ func SuiteReader(t *testing.T) <-chan TestItem {
 					}
 				}
 
-				if L != "OUT" {
+				if !strings.HasPrefix(L, "OUT") {
 					t.Fatalf("invalid test suite file")
+				}
+
+				numErrors := 0
+				if len(L) > 4 {
+					n, err := strconv.ParseUint(L[4:], 10, 31)
+					if err != nil {
+						t.Fatalf("invalid error count")
+					}
+					numErrors = int(n)
 				}
 
 				records := []string{}
@@ -120,9 +131,10 @@ func SuiteReader(t *testing.T) <-chan TestItem {
 
 				// process records
 				ti := TestItem{
-					ID:      id,
-					Names:   m,
-					Records: strings.Join(records, "\n"),
+					ID:        id,
+					Names:     m,
+					Records:   strings.Join(records, "\n"),
+					NumErrors: numErrors,
 				}
 
 				testItemChan <- ti

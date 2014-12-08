@@ -26,7 +26,15 @@ func TestSuite(t *testing.T) {
 				continue
 			}
 
-			v := ncdomain.ParseValue(k, jsonValue, resolve, nil)
+			errCount := 0
+			errFunc := func(err error, isWarning bool) {
+				if !isWarning {
+					errCount++
+				}
+				//fmt.Printf("Error:  %v\n", err)
+			}
+
+			v := ncdomain.ParseValue(k, jsonValue, resolve, errFunc)
 			if v == nil {
 				// TODO
 				continue
@@ -45,6 +53,10 @@ func TestSuite(t *testing.T) {
 			// CHECK MATCH
 			if rrstr != ti.Records {
 				t.Errorf("Didn't match: %s\n%+v\n    !=\n%+v\n\n%#v\n\n%#v", ti.ID, rrstr, ti.Records, v, rrs)
+			}
+
+			if errCount != ti.NumErrors {
+				t.Errorf("Error count didn't match: %d != %d (%s)\n", errCount, ti.NumErrors, ti.ID)
 			}
 		}
 	}

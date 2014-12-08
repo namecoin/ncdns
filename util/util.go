@@ -126,6 +126,7 @@ var re_hostName = regexp.MustCompilePOSIX(`^(([a-z0-9_][a-z0-9_-]{0,62}\.)*[a-z_
 var re_label = regexp.MustCompilePOSIX(`^[a-z_][a-z0-9_-]*$`)
 var re_serviceName = regexp.MustCompilePOSIX(`^[a-z_][a-z0-9_-]*$`)
 var re_domainNameLabel = regexp.MustCompilePOSIX(`^(xn--)?[a-z0-9]+(-[a-z0-9]+)*$`)
+var re_ownerName = regexp.MustCompilePOSIX(`^(|@|([a-z0-9_-]{1,63}\.)*[a-z0-9_-]{1,63}(\.@?)?)$`)
 
 func ValidateHostName(name string) bool {
 	name = dns.Fqdn(name)
@@ -142,6 +143,10 @@ func ValidateServiceName(name string) bool {
 
 func ValidateDomainNameLabel(name string) bool {
 	return len(name) <= 63 && re_domainNameLabel.MatchString(name)
+}
+
+func ValidateOwnerName(name string) bool {
+	return len(name) <= 255 && re_ownerName.MatchString(name)
 }
 
 func ValidateEmail(email string) bool {
