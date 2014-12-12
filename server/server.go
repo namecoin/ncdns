@@ -8,6 +8,7 @@ import "github.com/miekg/dns"
 import "os"
 import "net"
 import "fmt"
+import "sync"
 import "strings"
 import "path/filepath"
 
@@ -22,6 +23,7 @@ type Server struct {
 	mux         *dns.ServeMux
 	udpListener *dns.Server
 	tcpListener *dns.Server
+	wgStart     sync.WaitGroup
 }
 
 type ServerConfig struct {
@@ -167,11 +169,14 @@ func (s *Server) loadKey(fn, privateFn string) (k *dns.DNSKEY, privatek dns.Priv
 }
 
 func (s *Server) Start() error {
+
 	s.mux = dns.NewServeMux()
 	s.mux.Handle(".", s.engine)
 
+	s.wgStart.Add(2)
 	s.udpListener = s.runListener("udp")
 	s.tcpListener = s.runListener("tcp")
+	s.wgStart.Wait()
 
 	return nil
 }
@@ -186,6 +191,9 @@ func (s *Server) runListener(net string) *dns.Server {
 		Addr:    s.cfg.Bind,
 		Net:     net,
 		Handler: s.mux,
+		NotifyStartedFunc: func() {
+			s.wgStart.Done()
+		},
 	}
 	go s.doRunListener(ds)
 	return ds
