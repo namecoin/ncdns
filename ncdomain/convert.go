@@ -8,6 +8,7 @@ import "encoding/base64"
 import "encoding/hex"
 import "github.com/hlandau/ncdns/util"
 import "strings"
+import "strconv"
 
 const depthLimit = 16
 const mergeDepthLimit = 4
@@ -123,7 +124,7 @@ func (v *Value) RRs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
 	for i := range xout {
 		h := xout[i].Header()
 		if rrtypeHasPrefix(h.Rrtype) {
-			h.Name += "." + suffix
+			h.Name += suffix
 		} else {
 			h.Name = suffix
 		}
@@ -818,19 +819,9 @@ func parseTLSA(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 					continue
 				}
 
-				ports, ok := tlsa[0].(string)
-				if !ok {
-					porti, ok := tlsa[0].(float64)
-					if !ok {
-						errFunc.add(fmt.Errorf("First item in TLSA value must be an integer or string (port number)"))
-						continue
-					}
-					ports = fmt.Sprintf("%d", int(porti))
-				}
-
-				transport, ok := tlsa[1].(string)
-				if !ok {
-					errFunc.add(fmt.Errorf("Second item in TLSA value must be a string (transport protocol name)"))
+				sname, err := deriveServicePrefix(tlsa[0], tlsa[1])
+				if err != nil {
+					errFunc.add(err)
 					continue
 				}
 
@@ -864,16 +855,10 @@ func parseTLSA(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 					continue
 				}
 
-				if len(ports) > 62 || len(transport) > 62 {
-					errFunc.add(fmt.Errorf("Application and transport names must not exceed 62 characters"))
-					continue
-				}
-
 				a4h := hex.EncodeToString(a4b)
-				name := "_" + ports + "._" + transport
 
 				v.TLSA = append(v.TLSA, &dns.TLSA{
-					Hdr: dns.RR_Header{Name: name, Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
+					Hdr: dns.RR_Header{Name: sname, Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
 						Ttl: defaultTTL},
 					Usage:        uint8(a1),
 					Selector:     uint8(a2),
@@ -1045,17 +1030,13 @@ func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, er
 		return
 	}
 
-	appProtoName, ok := svca[0].(string)
-	if !ok || !util.ValidateServiceName(appProtoName) {
-		errFunc.add(fmt.Errorf("malformed service value: first item must be a string (application protocol)"))
+	sname, err := deriveServicePrefix(svca[0], svca[1])
+	if err != nil {
+		errFunc.add(err)
 		return
 	}
 
-	transportProtoName, ok := svca[1].(string)
-	if !ok || !util.ValidateServiceName(transportProtoName) {
-		errFunc.add(fmt.Errorf("malformed service value: second item must be a string (transport protocol)"))
-		return
-	}
+	servicesUsed[sname] = struct{}{}
 
 	priority, ok := svca[2].(float64)
 	if !ok {
@@ -1081,9 +1062,6 @@ func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, er
 		return
 	}
 
-	sname := "_" + appProtoName + "._" + transportProtoName
-	servicesUsed[sname] = struct{}{}
-
 	v.Service = append(v.Service, &dns.SRV{
 		Hdr: dns.RR_Header{
 			Name:   sname,
@@ -1098,6 +1076,51 @@ func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, er
 	})
 
 	return
+}
+
+func convServiceValue(x interface{}) (string, error) {
+	if x == nil {
+		return "", nil
+	} else if f, ok := x.(float64); ok {
+		return strconv.FormatInt(int64(f), 10), nil
+	} else if s, ok := x.(string); ok {
+		return s, nil
+	} else {
+		return "", fmt.Errorf("malformed value: first item must be a string (application protocol)")
+	}
+}
+
+func deriveServicePrefixPart(x interface{}) (string, error) {
+	xs, err := convServiceValue(x)
+	if err != nil {
+		return "", err
+	}
+
+	if len(xs) == 0 {
+		return "", nil
+	}
+
+	if xs == "*" {
+		return "*.", nil
+	}
+
+	if !util.ValidateServiceName(xs) {
+		return "", fmt.Errorf("malformed service name")
+	}
+
+	return "_" + xs + ".", nil
+}
+
+func deriveServicePrefix(x, y interface{}) (string, error) {
+	xs, err := deriveServicePrefixPart(x)
+	if err != nil {
+		return "", err
+	}
+	ys, err := deriveServicePrefixPart(y)
+	if err != nil {
+		return "", err
+	}
+	return xs + ys, nil
 }
 
 func parseMap(rv map[string]interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string) {
