@@ -5,9 +5,9 @@ import "github.com/hlandauf/btcjson"
 import "github.com/hlandau/madns/merr"
 import extratypes "github.com/hlandau/ncbtcjsontypes"
 
-import "sync/atomic"
 import "fmt"
 import "expvar"
+import "sync/atomic"
 
 var cQueryCalls = expvar.NewInt("ncdns.namecoin.numQueryCalls")
 var cSyncCalls = expvar.NewInt("ncdns.namecoin.numSyncCalls")
