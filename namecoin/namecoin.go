@@ -3,7 +3,7 @@ package namecoin
 // btcjson had to be modified a bit to get correct error reporting.
 import "github.com/hlandauf/btcjson"
 import "github.com/hlandau/madns/merr"
-import "github.com/hlandau/ncdns/namecoin/extratypes"
+import extratypes "github.com/hlandau/ncbtcjsontypes"
 
 import "sync/atomic"
 import "fmt"
