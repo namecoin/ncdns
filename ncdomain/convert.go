@@ -671,15 +671,15 @@ func parseImportImpl(rv map[string]interface{}, val *Value, resolve ResolveFunc,
 						}
 					}
 
+					if _, ok := mergedNames[k]; ok {
+						// already merged
+						continue
+					}
+
 					// ok
 					var dv string
 					dv, err = resolve(k)
 					if err != nil {
-						continue
-					}
-
-					if _, ok := mergedNames[k]; ok {
-						// already merged
 						continue
 					}
 

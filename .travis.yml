@@ -9,3 +9,4 @@ notifications:
   irc:
     channels:
       - "chat.freenode.net##hl-t"
+    skip_join: true

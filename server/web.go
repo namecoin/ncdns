@@ -7,6 +7,7 @@ import "github.com/hlandau/ncdns/util"
 import "github.com/hlandau/ncdns/ncdomain"
 import "github.com/miekg/dns"
 import "github.com/kr/pretty"
+import "path/filepath"
 import "time"
 import "strings"
 import "fmt"
@@ -18,7 +19,7 @@ var lookupPageTpl *template.Template
 
 var tplSetFlag = flag.String("tplset", "std", "Subdirectory of tpl/ to look for templates in (default: std)")
 
-func initTemplates() error {
+func initTemplates(configDir string) error {
 	if lookupPageTpl != nil {
 		return nil
 	}
@@ -28,17 +29,17 @@ func initTemplates() error {
 	}
 
 	var err error
-	layoutTpl, err = template.ParseFiles(tplFilename("layout"))
+	layoutTpl, err = template.ParseFiles(tplFilename(configDir, "layout"))
 	if err != nil {
 		return err
 	}
 
-	mainPageTpl, err = deriveTemplate(tplFilename("main"))
+	mainPageTpl, err = deriveTemplate(tplFilename(configDir, "main"))
 	if err != nil {
 		return err
 	}
 
-	lookupPageTpl, err = deriveTemplate(tplFilename("lookup"))
+	lookupPageTpl, err = deriveTemplate(tplFilename(configDir, "lookup"))
 	if err != nil {
 		return err
 	}
@@ -54,8 +55,9 @@ func deriveTemplate(filename string) (*template.Template, error) {
 	return cl.ParseFiles(filename)
 }
 
-func tplFilename(filename string) string {
-	return "tpl/" + *tplSetFlag + "/" + filename + ".tpl"
+func tplFilename(configDir, filename string) string {
+	s := "tpl/" + *tplSetFlag + "/" + filename + ".tpl"
+	return filepath.Join(configDir, "..", s)
 }
 
 type webServer struct {
@@ -198,7 +200,7 @@ func clearAllCookies(rw http.ResponseWriter, req *http.Request) {
 }
 
 func webStart(listenAddr string, server *Server) error {
-	err := initTemplates()
+	err := initTemplates(server.cfg.ConfigDir)
 	if err != nil {
 		return err
 	}
