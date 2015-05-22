@@ -37,10 +37,10 @@ type Value struct {
 	HasTranslate bool // True if Translate was specified. Necessary as "" is a valid relative value for Translate.
 	DS           []*dns.DS
 	TXT          [][]string
-	Service      []*dns.SRV        // header name contains e.g. "_http._tcp"
-	Hostmaster   string            // "hostmaster@example.com"
-	MX           []*dns.MX         // header name is left blank
-	TLSA         []*dns.TLSA       // header name contains e.g. "_443._tcp"
+	SRV          []*dns.SRV
+	Hostmaster   string    // "hostmaster@example.com"
+	MX           []*dns.MX // header name is left blank
+	TLSA         []*dns.TLSA
 	Map          map[string]*Value // may contain and "*", will not contain ""
 
 	// set if the value is at the top level (alas necessary for relname interpretation)
@@ -77,7 +77,7 @@ func (v *Value) mkString(i string) string {
 			s += i + "  " + txtc
 		}
 	}
-	for _, srv := range v.Service {
+	for _, srv := range v.SRV {
 		s += i + "SRV Record: " + srv.String()
 	}
 	for _, tlsa := range v.TLSA {
@@ -112,10 +112,9 @@ func (v *Value) RRs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
 				out, _ = v.appendIP6s(out, suffix, apexSuffix)
 				out, _ = v.appendTXTs(out, suffix, apexSuffix)
 				out, _ = v.appendMXs(out, suffix, apexSuffix)
+				out, _ = v.appendSRVs(out, suffix, apexSuffix)
+				out, _ = v.appendTLSA(out, suffix, apexSuffix)
 			}
-			// SRV and TLSA records are assigned to a subdomain, but CNAMEs are not recursive so CNAME must not inhibit them
-			out, _ = v.appendServices(out, suffix, apexSuffix)
-			out, _ = v.appendTLSA(out, suffix, apexSuffix)
 		}
 	}
 	out, _ = v.appendDSs(out, suffix, apexSuffix)
@@ -222,9 +221,25 @@ func (v *Value) appendMXs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, er
 	return out, nil
 }
 
-func (v *Value) appendServices(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
-	for _, svc := range v.Service {
-		out = append(out, svc)
+func (v *Value) appendSRVs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
+	for _, svc := range v.SRV {
+		qn, ok := v.qualify(svc.Target, suffix, apexSuffix)
+		if !ok {
+			continue
+		}
+
+		out = append(out, &dns.SRV{
+			Hdr: dns.RR_Header{
+				Name:   "",
+				Rrtype: dns.TypeSRV,
+				Class:  dns.ClassINET,
+				Ttl:    defaultTTL,
+			},
+			Priority: svc.Priority,
+			Weight:   svc.Weight,
+			Port:     svc.Port,
+			Target:   qn,
+		})
 	}
 
 	return out, nil
@@ -405,7 +420,7 @@ func parse(rv interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, dep
 	parseHostmaster(rvm, v, errFunc)
 	parseDS(rvm, v, errFunc)
 	parseTXT(rvm, v, errFunc)
-	parseService(rvm, v, errFunc, relname)
+	parseSRV(rvm, v, errFunc, relname)
 	parseMX(rvm, v, errFunc, relname)
 	parseTLSA(rvm, v, errFunc)
 	parseMap(rvm, v, resolve, errFunc, depth, mergeDepth, relname)
@@ -814,36 +829,30 @@ func parseTLSA(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 		for _, tlsa1 := range tlsaa {
 			if tlsa, ok := tlsa1.([]interface{}); ok {
 				// Format: ["443", "tcp", 1, 2, 3, "base64 certificate data"]
-				if len(tlsa) < 6 {
+				if len(tlsa) < 4 {
 					errFunc.add(fmt.Errorf("TLSA item must have six items"))
 					continue
 				}
 
-				sname, err := deriveServicePrefix(tlsa[0], tlsa[1])
-				if err != nil {
-					errFunc.add(err)
-					continue
-				}
-
-				a1, ok := tlsa[2].(float64)
+				a1, ok := tlsa[0].(float64)
 				if !ok {
 					errFunc.add(fmt.Errorf("Third item in TLSA value must be an integer (usage)"))
 					continue
 				}
 
-				a2, ok := tlsa[3].(float64)
+				a2, ok := tlsa[1].(float64)
 				if !ok {
 					errFunc.add(fmt.Errorf("Fourth item in TLSA value must be an integer (selector)"))
 					continue
 				}
 
-				a3, ok := tlsa[4].(float64)
+				a3, ok := tlsa[2].(float64)
 				if !ok {
 					errFunc.add(fmt.Errorf("Fifth item in TLSA value must be an integer (match type)"))
 					continue
 				}
 
-				a4, ok := tlsa[5].(string)
+				a4, ok := tlsa[3].(string)
 				if !ok {
 					errFunc.add(fmt.Errorf("Sixth item in TLSA value must be a string (certificate)"))
 					continue
@@ -858,7 +867,7 @@ func parseTLSA(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 				a4h := hex.EncodeToString(a4b)
 
 				v.TLSA = append(v.TLSA, &dns.TLSA{
-					Hdr: dns.RR_Header{Name: sname, Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
+					Hdr: dns.RR_Header{Name: "", Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
 						Ttl: defaultTTL},
 					Usage:        uint8(a1),
 					Selector:     uint8(a2),
@@ -991,80 +1000,64 @@ func parseSingleMX(rv map[string]interface{}, s interface{}, v *Value, errFunc E
 	return
 }
 
-func parseService(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
-	rsvc, ok := rv["service"]
+func parseSRV(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
+	rsvc, ok := rv["srv"]
 	if !ok || rsvc == nil {
 		return
 	}
 
-	// We have to merge the services specified and those imported using an
-	// import statement.
-	servicesUsed := map[string]struct{}{}
-	oldServices := v.Service
-	v.Service = nil
+	v.SRV = nil
 
 	if sa, ok := rsvc.([]interface{}); ok {
 		for _, s := range sa {
-			parseSingleService(rv, s, v, errFunc, relname, servicesUsed)
+			parseSingleService(rv, s, v, errFunc, relname)
 		}
 	} else {
 		errFunc.add(fmt.Errorf("malformed service value"))
 	}
-
-	for _, svc := range oldServices {
-		if _, ok := servicesUsed[svc.Header().Name]; !ok {
-			v.Service = append(v.Service, svc)
-		}
-	}
 }
 
-func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, errFunc ErrorFunc, relname string, servicesUsed map[string]struct{}) {
+func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, errFunc ErrorFunc, relname string) {
 	svca, ok := svc.([]interface{})
 	if !ok {
 		errFunc.add(fmt.Errorf("malformed service value"))
 		return
 	}
 
-	if len(svca) < 6 {
-		errFunc.add(fmt.Errorf("malformed service value: must have six items"))
+	if len(svca) < 4 {
+		errFunc.add(fmt.Errorf("malformed service value: must have four items"))
 		return
 	}
 
-	sname, err := deriveServicePrefix(svca[0], svca[1])
-	if err != nil {
-		errFunc.add(err)
-		return
-	}
+	//servicesUsed[sname] = struct{}{}
 
-	servicesUsed[sname] = struct{}{}
-
-	priority, ok := svca[2].(float64)
+	priority, ok := svca[0].(float64)
 	if !ok {
 		errFunc.add(fmt.Errorf("malformed service value: third item must be an integer (priority)"))
 		return
 	}
 
-	weight, ok := svca[3].(float64)
+	weight, ok := svca[1].(float64)
 	if !ok {
 		errFunc.add(fmt.Errorf("malformed service value: fourth item must be an integer (weight)"))
 		return
 	}
 
-	port, ok := svca[4].(float64)
+	port, ok := svca[2].(float64)
 	if !ok {
 		errFunc.add(fmt.Errorf("malformed service value: fifth item must be an integer (port number)"))
 		return
 	}
 
-	hostname, ok := svca[5].(string)
+	hostname, ok := svca[3].(string)
 	if !ok {
 		errFunc.add(fmt.Errorf("malformed service value: sixth item must be a string (target)"))
 		return
 	}
 
-	v.Service = append(v.Service, &dns.SRV{
+	v.SRV = append(v.SRV, &dns.SRV{
 		Hdr: dns.RR_Header{
-			Name:   sname,
+			Name:   "",
 			Rrtype: dns.TypeSRV,
 			Class:  dns.ClassINET,
 			Ttl:    defaultTTL,
@@ -1090,39 +1083,6 @@ func convServiceValue(x interface{}) (string, error) {
 	}
 }
 
-func deriveServicePrefixPart(x interface{}) (string, error) {
-	xs, err := convServiceValue(x)
-	if err != nil {
-		return "", err
-	}
-
-	if len(xs) == 0 {
-		return "", nil
-	}
-
-	if xs == "*" {
-		return "*.", nil
-	}
-
-	if !util.ValidateServiceName(xs) {
-		return "", fmt.Errorf("malformed service name")
-	}
-
-	return "_" + xs + ".", nil
-}
-
-func deriveServicePrefix(x, y interface{}) (string, error) {
-	xs, err := deriveServicePrefixPart(x)
-	if err != nil {
-		return "", err
-	}
-	ys, err := deriveServicePrefixPart(y)
-	if err != nil {
-		return "", err
-	}
-	return xs + ys, nil
-}
-
 func parseMap(rv map[string]interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, depth, mergeDepth int, relname string) {
 	rmap, ok := rv["map"]
 	if !ok || rmap == nil {
@@ -1143,13 +1103,17 @@ func parseMap(rv map[string]interface{}, v *Value, resolve ResolveFunc, errFunc 
 		}
 
 		if mvm, ok := mv.(map[string]interface{}); ok {
-			v2 := &Value{}
-			mergedNames := map[string]struct{}{}
-			parse(mvm, v2, resolve, errFunc, depth+1, mergeDepth, "", relname, mergedNames)
-
 			if v.Map == nil {
 				v.Map = make(map[string]*Value)
 			}
+
+			v2 := &Value{}
+			if v2e, ok := v.Map[mk]; ok {
+				v2 = v2e
+			}
+
+			mergedNames := map[string]struct{}{}
+			parse(mvm, v2, resolve, errFunc, depth+1, mergeDepth, "", relname, mergedNames)
 
 			v.Map[mk] = v2
 
@@ -1179,8 +1143,8 @@ func (v *Value) moveEmptyMapItems() {
 		if len(v.TXT) == 0 {
 			v.TXT = ev.TXT
 		}
-		if len(v.Service) == 0 {
-			v.Service = ev.Service
+		if len(v.SRV) == 0 {
+			v.SRV = ev.SRV
 		}
 		if len(v.MX) == 0 {
 			v.MX = ev.MX
