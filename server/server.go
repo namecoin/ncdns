@@ -11,6 +11,7 @@ import "fmt"
 import "sync"
 import "strings"
 import "path/filepath"
+import "crypto"
 
 const version = "1.0"
 
@@ -137,7 +138,7 @@ func NewServer(cfg *ServerConfig) (s *Server, err error) {
 	return
 }
 
-func (s *Server) loadKey(fn, privateFn string) (k *dns.DNSKEY, privatek dns.PrivateKey, err error) {
+func (s *Server) loadKey(fn, privateFn string) (k *dns.DNSKEY, privatek crypto.PrivateKey, err error) {
 	fn = s.cfg.cpath(fn)
 	privateFn = s.cfg.cpath(privateFn)
 

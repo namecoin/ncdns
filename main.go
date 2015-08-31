@@ -1,7 +1,7 @@
 package main
 
 import "github.com/hlandau/degoutils/config"
-import "github.com/hlandau/degoutils/service"
+import "gopkg.in/hlandau/service.v1"
 import "github.com/hlandau/ncdns/server"
 import "path/filepath"
 
