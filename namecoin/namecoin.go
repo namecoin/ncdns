@@ -2,7 +2,7 @@ package namecoin
 
 // btcjson had to be modified a bit to get correct error reporting.
 import "github.com/hlandauf/btcjson"
-import "github.com/hlandau/madns/merr"
+import "gopkg.in/hlandau/madns.v1/merr"
 import extratypes "github.com/hlandau/ncbtcjsontypes"
 
 import "fmt"

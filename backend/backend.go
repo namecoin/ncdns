@@ -2,7 +2,7 @@ package backend
 
 import "github.com/miekg/dns"
 import "github.com/golang/groupcache/lru"
-import "github.com/hlandau/madns/merr"
+import "gopkg.in/hlandau/madns.v1/merr"
 import "github.com/hlandau/ncdns/namecoin"
 import "github.com/hlandau/ncdns/util"
 import "github.com/hlandau/ncdns/ncdomain"

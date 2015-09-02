@@ -1,6 +1,6 @@
 package server
 
-import "github.com/hlandau/madns"
+import "gopkg.in/hlandau/madns.v1"
 import "github.com/hlandau/degoutils/log"
 import "github.com/hlandau/ncdns/backend"
 import "github.com/hlandau/ncdns/namecoin"
