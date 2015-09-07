@@ -1,15 +1,15 @@
 package main
 
-import "github.com/hlandau/degoutils/config"
+import "github.com/hlandau/degoutils/config2"
 import "gopkg.in/hlandau/service.v1"
 import "github.com/hlandau/ncdns/server"
 import "path/filepath"
 
 func main() {
 	cfg := server.ServerConfig{}
-	config := config.Configurator{
-		ProgramName:     "ncdns",
-		ConfigFilePaths: []string{"$BIN/../etc/ncdns.conf", "/etc/ncdns/ncdns.conf"},
+
+	config := config2.Configurator{
+		ProgramName: "ncdns",
 	}
 	config.ParseFatal(&cfg)
 
