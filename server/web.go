@@ -2,7 +2,6 @@ package server
 
 import "net/http"
 import "html/template"
-import "github.com/hlandau/degoutils/log"
 import "github.com/hlandau/ncdns/util"
 import "github.com/hlandau/ncdns/ncdomain"
 import "github.com/miekg/dns"
@@ -11,35 +10,28 @@ import "path/filepath"
 import "time"
 import "strings"
 import "fmt"
-import "flag"
 
 var layoutTpl *template.Template
 var mainPageTpl *template.Template
 var lookupPageTpl *template.Template
 
-var tplSetFlag = flag.String("tplset", "std", "Subdirectory of tpl/ to look for templates in (default: std)")
-
-func initTemplates(configDir string) error {
+func (s *Server) initTemplates() error {
 	if lookupPageTpl != nil {
 		return nil
 	}
 
-	if *tplSetFlag == "" {
-		*tplSetFlag = "std"
-	}
-
 	var err error
-	layoutTpl, err = template.ParseFiles(tplFilename(configDir, "layout"))
+	layoutTpl, err = template.ParseFiles(s.tplFilename("layout"))
 	if err != nil {
 		return err
 	}
 
-	mainPageTpl, err = deriveTemplate(tplFilename(configDir, "main"))
+	mainPageTpl, err = deriveTemplate(s.tplFilename("main"))
 	if err != nil {
 		return err
 	}
 
-	lookupPageTpl, err = deriveTemplate(tplFilename(configDir, "lookup"))
+	lookupPageTpl, err = deriveTemplate(s.tplFilename("lookup"))
 	if err != nil {
 		return err
 	}
@@ -55,9 +47,13 @@ func deriveTemplate(filename string) (*template.Template, error) {
 	return cl.ParseFiles(filename)
 }
 
-func tplFilename(configDir, filename string) string {
-	s := "tpl/" + *tplSetFlag + "/" + filename + ".tpl"
-	return filepath.Join(configDir, "..", s)
+func (s *Server) tplFilename(filename string) string {
+	td := filepath.Join(s.cfg.ConfigDir, "..", "tpl")
+	if s.cfg.TplPath != "" {
+		td = s.cfg.TplPath
+	}
+
+	return filepath.Join(td, s.cfg.TplSet, filename+".tpl")
 }
 
 type webServer struct {
@@ -83,6 +79,11 @@ func (ws *webServer) layoutInfo() *layoutInfo {
 		cshtml = `<span id="logo1">` + csparts[0] + `</span><span id="logo2">.</span><span id="logo3">` + csparts[1] + `</span>`
 	}
 
+	var tld string
+	if len(csparts) > 1 {
+		tld = "." + csparts[1]
+	}
+
 	li := &layoutInfo{
 		SelfName:             ws.s.ServerName(),
 		Time:                 time.Now().Format("2006-01-02 15:04:05"),
@@ -90,7 +91,7 @@ func (ws *webServer) layoutInfo() *layoutInfo {
 		CanonicalNameservers: ws.s.cfg.canonicalNameservers,
 		Hostmaster:           ws.s.cfg.Hostmaster,
 		CanonicalSuffixHTML:  template.HTML(cshtml),
-		TLD:                  "." + csparts[1],
+		TLD:                  tld,
 		HasDNSSEC:            ws.s.cfg.ZonePublicKey != "",
 	}
 
@@ -200,7 +201,7 @@ func clearAllCookies(rw http.ResponseWriter, req *http.Request) {
 }
 
 func webStart(listenAddr string, server *Server) error {
-	err := initTemplates(server.cfg.ConfigDir)
+	err := server.initTemplates()
 	if err != nil {
 		return err
 	}

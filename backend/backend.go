@@ -6,11 +6,13 @@ import "gopkg.in/hlandau/madns.v1/merr"
 import "github.com/hlandau/ncdns/namecoin"
 import "github.com/hlandau/ncdns/util"
 import "github.com/hlandau/ncdns/ncdomain"
+import "github.com/hlandau/xlog"
 import "sync"
 import "fmt"
 import "net"
 import "net/mail"
 import "strings"
+import "time"
 
 // Provides an abstract zone file for the Namecoin .bit TLD.
 type Backend struct {
@@ -22,6 +24,8 @@ type Backend struct {
 }
 
 const defaultMaxEntries = 100
+
+var log, Log = xlog.New("ncdns.backend")
 
 // Backend configuration.
 type Config struct {
@@ -337,12 +341,22 @@ func (b *Backend) resolveName(name string) (jsonValue string, err error) {
 		return fv, nil
 	}
 
-	v, err := b.nc.Query(name)
-	if err != nil {
-		return "", err
-	}
+	// The btcjson package has quite a long timeout, far in excess of standard
+	// DNS timeouts. We need to return an error response rapidly if we can't
+	// query the backend. Be generous with the timeout as responses from the
+	// Namecoin JSON-RPC seem sluggish sometimes.
+	result := make(chan struct{}, 1)
+	go func() {
+		jsonValue, err = b.nc.Query(name)
+		result <- struct{}{}
+	}()
 
-	return v, nil
+	select {
+	case <-result:
+		return
+	case <-time.After(1500 * time.Millisecond):
+		return "", fmt.Errorf("timeout")
+	}
 }
 
 func (b *Backend) jsonToDomain(name, jsonValue string) (*domain, error) {

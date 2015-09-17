@@ -1,7 +1,6 @@
 package server
 
 import "gopkg.in/hlandau/madns.v1"
-import "github.com/hlandau/degoutils/log"
 import "github.com/hlandau/ncdns/backend"
 import "github.com/hlandau/ncdns/namecoin"
 import "github.com/miekg/dns"
@@ -12,8 +11,11 @@ import "sync"
 import "strings"
 import "path/filepath"
 import "crypto"
+import "github.com/hlandau/xlog"
 
 const version = "1.0"
+
+var log, Log = xlog.New("ncdns.server")
 
 type Server struct {
 	cfg ServerConfig
@@ -49,6 +51,8 @@ type ServerConfig struct {
 	Hostmaster           string `default:"" usage:"Hostmaster e. mail address"`
 	VanityIPs            string `default:"" usage:"Comma separated list of IP addresses to place in A/AAAA records at the zone apex (default: don't add any records)"`
 	vanityIPs            []net.IP
+	TplSet               string `default:"std" usage:"The template set to use"`
+	TplPath              string `default:"" usage:"The path to the tpl directory (empty: autodetect)"`
 
 	ConfigDir string // path to interpret filenames relative to
 }
@@ -170,7 +174,6 @@ func (s *Server) loadKey(fn, privateFn string) (k *dns.DNSKEY, privatek crypto.P
 }
 
 func (s *Server) Start() error {
-
 	s.mux = dns.NewServeMux()
 	s.mux.Handle(".", s.engine)
 
@@ -179,6 +182,7 @@ func (s *Server) Start() error {
 	s.tcpListener = s.runListener("tcp")
 	s.wgStart.Wait()
 
+	log.Info("Listeners started")
 	return nil
 }
 
