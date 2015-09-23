@@ -62,8 +62,14 @@ func (cfg *ServerConfig) cpath(s string) string {
 }
 
 func NewServer(cfg *ServerConfig) (s *Server, err error) {
-	s = &Server{}
-	s.cfg = *cfg
+	s = &Server{
+		cfg: *cfg,
+		namecoinConn: namecoin.Conn{
+			Username: cfg.NamecoinRPCUsername,
+			Password: cfg.NamecoinRPCPassword,
+			Server:   cfg.NamecoinRPCAddress,
+		},
+	}
 
 	s.cfg.canonicalNameservers = strings.Split(s.cfg.CanonicalNameservers, ",")
 	for i := range s.cfg.canonicalNameservers {
@@ -81,22 +87,14 @@ func NewServer(cfg *ServerConfig) (s *Server, err error) {
 		}
 	}
 
-	s.namecoinConn = namecoin.Conn{
-		Username: cfg.NamecoinRPCUsername,
-		Password: cfg.NamecoinRPCPassword,
-		Server:   cfg.NamecoinRPCAddress,
-	}
-
-	bcfg := &backend.Config{
+	b, err := backend.New(&backend.Config{
 		NamecoinConn:         s.namecoinConn,
 		CacheMaxEntries:      cfg.CacheMaxEntries,
 		SelfIP:               cfg.SelfIP,
 		Hostmaster:           cfg.Hostmaster,
 		CanonicalNameservers: s.cfg.canonicalNameservers,
 		VanityIPs:            s.cfg.vanityIPs,
-	}
-
-	b, err := backend.New(bcfg)
+	})
 	if err != nil {
 		return
 	}
@@ -125,12 +123,10 @@ func NewServer(cfg *ServerConfig) (s *Server, err error) {
 		return nil, fmt.Errorf("Must specify ZSK if KSK is specified")
 	}
 
-	e, err := madns.NewEngine(ecfg)
+	s.engine, err = madns.NewEngine(ecfg)
 	if err != nil {
 		return
 	}
-
-	s.engine = e
 
 	if cfg.HTTPListenAddr != "" {
 		err = webStart(cfg.HTTPListenAddr, s)

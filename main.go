@@ -1,14 +1,14 @@
 package main
 
-import "github.com/hlandau/degoutils/config"
 import "gopkg.in/hlandau/service.v1"
+import "gopkg.in/hlandau/easyconfig.v1"
 import "github.com/hlandau/ncdns/server"
 import "path/filepath"
 
 func main() {
 	cfg := server.ServerConfig{}
 
-	config := config.Configurator{
+	config := easyconfig.Configurator{
 		ProgramName: "ncdns",
 	}
 	config.ParseFatal(&cfg)
