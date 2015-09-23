@@ -1,6 +1,6 @@
 package main
 
-import "gopkg.in/hlandau/service.v1"
+import "gopkg.in/hlandau/service.v2"
 import "gopkg.in/hlandau/easyconfig.v1"
 import "github.com/hlandau/ncdns/server"
 import "path/filepath"
