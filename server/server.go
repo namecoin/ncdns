@@ -18,7 +18,7 @@ const version = "1.0"
 var log, Log = xlog.New("ncdns.server")
 
 type Server struct {
-	cfg ServerConfig
+	cfg Config
 
 	engine       madns.Engine
 	namecoinConn namecoin.Conn
@@ -29,7 +29,7 @@ type Server struct {
 	wgStart     sync.WaitGroup
 }
 
-type ServerConfig struct {
+type Config struct {
 	Bind           string `default:":53" usage:"Address to bind to (e.g. 0.0.0.0:53)"`
 	PublicKey      string `default:"" usage:"Path to the DNSKEY KSK public key file"`
 	PrivateKey     string `default:"" usage:"Path to the KSK's corresponding private key file"`
@@ -57,11 +57,11 @@ type ServerConfig struct {
 	ConfigDir string // path to interpret filenames relative to
 }
 
-func (cfg *ServerConfig) cpath(s string) string {
+func (cfg *Config) cpath(s string) string {
 	return filepath.Join(cfg.ConfigDir, s)
 }
 
-func NewServer(cfg *ServerConfig) (s *Server, err error) {
+func New(cfg *Config) (s *Server, err error) {
 	s = &Server{
 		cfg: *cfg,
 		namecoinConn: namecoin.Conn{
@@ -198,4 +198,8 @@ func (s *Server) runListener(net string) *dns.Server {
 	}
 	go s.doRunListener(ds)
 	return ds
+}
+
+func (s *Server) Stop() error {
+	return nil // TODO
 }

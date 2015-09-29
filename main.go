@@ -6,7 +6,7 @@ import "github.com/hlandau/ncdns/server"
 import "path/filepath"
 
 func main() {
-	cfg := server.ServerConfig{}
+	cfg := server.Config{}
 
 	config := easyconfig.Configurator{
 		ProgramName: "ncdns",
@@ -17,31 +17,10 @@ func main() {
 	cfg.ConfigDir = filepath.Dir(config.ConfigFilePath())
 
 	service.Main(&service.Info{
-		Name:          "ncdns",
 		Description:   "Namecoin to DNS Daemon",
 		DefaultChroot: service.EmptyChrootPath,
-		RunFunc: func(smgr service.Manager) error {
-			s, err := server.NewServer(&cfg)
-			if err != nil {
-				return err
-			}
-
-			err = s.Start()
-			if err != nil {
-				return err
-			}
-
-			err = smgr.DropPrivileges()
-			if err != nil {
-				return err
-			}
-
-			smgr.SetStarted()
-			smgr.SetStatus("ncdns: running ok")
-
-			<-smgr.StopChan()
-
-			return nil
+		NewFunc: func() (service.Runnable, error) {
+			return server.New(&cfg)
 		},
 	})
 }
