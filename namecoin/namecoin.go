@@ -12,6 +12,7 @@ import "sync/atomic"
 var cQueryCalls = expvar.NewInt("ncdns.namecoin.numQueryCalls")
 var cSyncCalls = expvar.NewInt("ncdns.namecoin.numSyncCalls")
 var cFilterCalls = expvar.NewInt("ncdns.namecoin.numFilterCalls")
+var cScanCalls = expvar.NewInt("ncdns.namecoin.numScanCalls")
 var cCurHeightCalls = expvar.NewInt("ncdns.namecoin.numCurHeightCalls")
 
 // Used for generating IDs for JSON-RPC requests.
@@ -135,6 +136,34 @@ func (nc *Conn) Filter(regexp string, maxage, from, count int) (names []extratyp
 	cFilterCalls.Add(1)
 
 	cmd, err := extratypes.NewNameFilterCmd(newID(), regexp, maxage, from, count)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.Error != nil {
+		return nil, r.Error
+	}
+
+	if r.Result == nil {
+		return nil, fmt.Errorf("got nil result")
+	}
+
+	if nsr, ok := r.Result.(extratypes.NameFilterReply); ok {
+		return []extratypes.NameFilterItem(nsr), nil
+	}
+
+	return nil, fmt.Errorf("bad reply")
+}
+
+func (nc *Conn) Scan(from string, count int) (names []extratypes.NameFilterItem, err error) {
+	cScanCalls.Add(1)
+
+	cmd, err := extratypes.NewNameScanCmd(newID(), from, count)
 	if err != nil {
 		return nil, err
 	}
