@@ -1,0 +1,34 @@
+#!/bin/bash
+
+go test -v ./...
+RESULT=$?
+
+echo Done tests with exit code $RESULT
+if [ "$RESULT" != "0" ]; then
+  return $RESULT
+fi
+
+# Test cross-compilation. The binaries produced are also used for release
+# upload in after_success if this is a release tag.
+
+echo Cross-compiling releases...
+mkdir -p "$GOPATH/releasing/idist" "$GOPATH/releasing/dist"
+
+# cgo crosscompile
+REPOS="github.com/$TRAVIS_REPO_SLUG"
+gox -cgo -osarch 'linux/386 linux/amd64' -output "$GOPATH/releasing/idist/{{.Dir}}-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/x" $REPOS
+RESULT1=$?
+
+# non-cgo crosscompile
+gox -osarch 'darwin/386 darwin/amd64 linux/arm freebsd/386 freebsd/amd64 freebsd/arm openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64' -output "$GOPATH/releasing/idist/{{.Dir}}-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/x" $REPOS
+RESULT2=$?
+
+echo cgo crosscompile exited with code $RESULT1
+echo non-cgo crosscompile exited with code $RESULT2
+
+if [ "$RESULT1" != "0" ]; then
+  return $RESULT1
+fi
+if [ "$RESULT2" != "0" ]; then
+  return $RESULT2
+fi

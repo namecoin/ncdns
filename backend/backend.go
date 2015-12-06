@@ -348,6 +348,7 @@ func (b *Backend) resolveName(name string) (jsonValue string, err error) {
 	result := make(chan struct{}, 1)
 	go func() {
 		jsonValue, err = b.nc.Query(name)
+		log.Errore(err, "failed to query namecoin")
 		result <- struct{}{}
 	}()
 
