@@ -17,8 +17,10 @@ SRC_DIR="$(pwd)"
 cd "$GOPATH/releasing/idist"
 for x in *; do
   echo "$x"
+  mkdir -p "$x/doc"
   cp "$GOPATH/src/github.com/$TRAVIS_REPO_SLUG/.travis/dist-readme.md" "$x"/README.md || \
   cp "$GOPATH/src/github.com/$TRAVIS_REPO_SLUG/README.md" "$x/" || true
+  cp "$GOPATH/src/github.com/$TRAVIS_REPO_SLUG/_doc/"* "$x/doc/"
   tar -zcf "../dist/$(basename "$x").tar.gz" "$x"
 done
 
