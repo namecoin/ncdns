@@ -2,7 +2,7 @@ PROJNAME=github.com/hlandau/ncdns
 BINARIES=$(PROJNAME) $(PROJNAME)/ncdt $(PROJNAME)/ncdumpzone
 
 ###############################################################################
-# v1.8  NNSC:github.com/hlandau/degoutils/_stdenv/Makefile.ref
+# v1.9  NNSC:github.com/hlandau/degoutils/_stdenv/Makefile.ref
 # This is a standard Makefile for building Go code designed to be copied into
 # other projects. Code below this line is not intended to be modified.
 
@@ -57,6 +57,7 @@ prebuild-checks:
 		done; \
 		ln -s "$(GOPATH)/src/$(PROJNAME)/Makefile"; \
 		[ -e "$(GOPATH)/src/$(PROJNAME)/_doc" ] && ln -s "$(GOPATH)/src/$(PROJNAME)/_doc" doc; \
+		[ -e "$(GOPATH)/src/$(PROJNAME)/_tpl" ] && ln -s "$(GOPATH)/src/$(PROJNAME)/_tpl" tpl; \
 	fi; \
   exit 0
 
