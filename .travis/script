@@ -1,5 +1,7 @@
 #!/bin/bash
 
+travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox
+
 go test -v ./...
 RESULT=$?
 
