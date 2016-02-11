@@ -35,12 +35,13 @@ ifeq ($(V),1)
 endif
 
 ## Buildinfo
-BUILDNAME?=$(shell date -u "%Y%m%d%H%M%S") on $(shell hostname -f)
-BUILDINFO=$(shell (echo built $(BUILDNAME); go list -f '{{range $$imp := .Deps}}{{printf "%s\n" $$imp}}{{end}}' $(1) | sort -u | xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}' | awk "{print \"$$GOPATH/src/\" \$$0}" | (while read line; do x="$$line"; while [ ! -e "$$x/.git" -a ! -e "$$x/.hg" ]; do x=$${x%/*}; if [ "$$x" = "" ]; then break; fi; done; echo "$$x"; done) | sort -u | (while read line; do echo git $${line\#$$GOPATH/src/} $$(git -C "$$line" rev-parse HEAD) $$(git -C "$$line" describe --all --dirty=+ --abbrev=99 --always); done)) | base64 -w 0)
+BUILDNAME?=$(shell date -u "+%Y%m%d%H%M%S") on $(shell hostname -f)
+BUILDINFO=$(shell (echo built $(BUILDNAME); GOPATH="$(GOPATH)"; go list -f '{{range $$imp := .Deps}}{{printf "%s\n" $$imp}}{{end}}' $(1) | sort -u | xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}' | awk "{print \"$$GOPATH/src/\" \$$0}" | (while read line; do x="$$line"; while [ ! -e "$$x/.git" -a ! -e "$$x/.hg" ]; do x=$${x%/*}; if [ "$$x" = "" ]; then break; fi; done; echo "$$x"; done) | sort -u | (while read line; do echo git $${line\#$$GOPATH/src/} $$(git -C "$$line" rev-parse HEAD) $$(git -C "$$line" describe --all --dirty=+ --abbrev=99 --always); done)) | base64 -w 0 | tr -d '=')
+VPFX=$(shell if [ -e "$(GOPATH)/src/$(PROJNAME)/vendor" ]; then echo "$(PROJNAME)/vendor/"; fi)
 BUILDINFO_FLAG=
 
 ifeq ($(USE_BUILDINFO),1)
-	BUILDINFO_FLAG= -ldflags "-X github.com/hlandau/degoutils/buildinfo.RawBuildInfo=$(call BUILDINFO,$(1))"
+	BUILDINFO_FLAG= -ldflags "-X $(VPFX)github.com/hlandau/degoutils/buildinfo.RawBuildInfo=$(call BUILDINFO,$(1))"
 endif
 
 ## Standard Rules
@@ -62,11 +63,11 @@ prebuild-checks:
 		[ -e "$(GOPATH)/src/$(PROJNAME)/_doc" ] && ln -s "$(GOPATH)/src/$(PROJNAME)/_doc" doc; \
 		[ -e "$(GOPATH)/src/$(PROJNAME)/_tpl" ] && ln -s "$(GOPATH)/src/$(PROJNAME)/_tpl" tpl; \
 	fi; \
-  exit 0
+	exit 0
 
 $(DIRS): | .gotten
 	$(call QI,DIRS)mkdir -p $(GOPATH)/src $(GOBIN); \
-  if [ ! -e "src" ]; then \
+	if [ ! -e "src" ]; then \
 	  ln -s $(GOPATH)/src src; \
 	fi; \
 	if [ ! -e "bin" ]; then \
