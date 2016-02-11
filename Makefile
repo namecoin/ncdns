@@ -75,7 +75,7 @@ $(DIRS): | .gotten
 	fi
 
 .gotten:
-	$(call QI,GO-GET,$(PROJNAME))go get $(PROJNAME)/...
+	$(call QI,GO-GET,$(PROJNAME))go get $(BINARIES)
 	$(Q)touch .gotten
 
 .NOTPARALLEL: prebuild-checks $(DIRS)
