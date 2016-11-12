@@ -2,12 +2,15 @@ PROJNAME=github.com/hlandau/ncdns
 BINARIES=$(PROJNAME) $(PROJNAME)/ncdt $(PROJNAME)/ncdumpzone
 
 ###############################################################################
-# v1.9  NNSC:github.com/hlandau/degoutils/_stdenv/Makefile.ref
+# v1.13  NNSC:github.com/hlandau/degoutils/_stdenv/Makefile.ref
 # This is a standard Makefile for building Go code designed to be copied into
 # other projects. Code below this line is not intended to be modified.
+#
+# NOTE: Use of this Makefile is not mandatory. People familiar with the use
+# of the "go" command who have a GOPATH setup can use go get/go install.
 
 # XXX: prebuild-checks needs bash, fix this at some point
-SHELL := /bin/bash
+SHELL := $(shell which bash)
 
 -include Makefile.extra
 -include Makefile.assets
@@ -35,13 +38,8 @@ ifeq ($(V),1)
 endif
 
 ## Buildinfo
-BUILDNAME?=$(shell date -u "+%Y%m%d%H%M%S") on $(shell hostname -f)
-BUILDINFO=$(shell (echo built $(BUILDNAME); GOPATH="$(GOPATH)"; go list -f '{{range $$imp := .Deps}}{{printf "%s\n" $$imp}}{{end}}' $(1) | sort -u | xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}' | awk "{print \"$$GOPATH/src/\" \$$0}" | (while read line; do x="$$line"; while [ ! -e "$$x/.git" -a ! -e "$$x/.hg" ]; do x=$${x%/*}; if [ "$$x" = "" ]; then break; fi; done; echo "$$x"; done) | sort -u | (while read line; do echo git $${line\#$$GOPATH/src/} $$(git -C "$$line" rev-parse HEAD) $$(git -C "$$line" describe --all --dirty=+ --abbrev=99 --always); done)) | base64 -w 0 | tr -d '=')
-VPFX=$(shell if [ -e "$(GOPATH)/src/$(PROJNAME)/vendor" ]; then echo "$(PROJNAME)/vendor/"; fi)
-BUILDINFO_FLAG=
-
 ifeq ($(USE_BUILDINFO),1)
-	BUILDINFO_FLAG= -ldflags "-X $(VPFX)github.com/hlandau/degoutils/buildinfo.RawBuildInfo=$(call BUILDINFO,$(1))"
+	BUILDINFO_FLAG=-ldflags "$$($$GOPATH/src/github.com/hlandau/buildinfo/gen $(1))"
 endif
 
 ## Standard Rules
@@ -67,7 +65,7 @@ prebuild-checks:
 
 $(DIRS): | .gotten
 	$(call QI,DIRS)mkdir -p $(GOPATH)/src $(GOBIN); \
-	if [ ! -e "src" ]; then \
+  if [ ! -e "src" ]; then \
 	  ln -s $(GOPATH)/src src; \
 	fi; \
 	if [ ! -e "bin" ]; then \
@@ -75,7 +73,7 @@ $(DIRS): | .gotten
 	fi
 
 .gotten:
-	$(call QI,GO-GET,$(PROJNAME))go get $(BINARIES)
+	$(call QI,GO-GET,$(PROJNAME))go get $(PROJNAME)/...
 	$(Q)touch .gotten
 
 .NOTPARALLEL: prebuild-checks $(DIRS)
@@ -88,3 +86,6 @@ install: all
 	$(call QI,INSTALL,$(BINARIES))for x in $(BINARIES); do \
 		install -Dp $(GOBIN)/`basename "$$x"` $(DESTDIR)$(PREFIX)/bin; \
 	done
+
+update: | .gotten
+	$(call QI,GO-GET,$(PROJNAME))go get -u $(PROJNAME)/...

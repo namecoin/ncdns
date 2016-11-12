@@ -1,10 +1,12 @@
 package main
 
-import "gopkg.in/hlandau/service.v2"
-import "gopkg.in/hlandau/easyconfig.v1"
-import "github.com/hlandau/ncdns/server"
-import "github.com/hlandau/degoutils/xlogconfig"
-import "path/filepath"
+import (
+	"github.com/hlandau/dexlogconfig"
+	"github.com/hlandau/ncdns/server"
+	"gopkg.in/hlandau/easyconfig.v1"
+	"gopkg.in/hlandau/service.v2"
+	"path/filepath"
+)
 
 func main() {
 	cfg := server.Config{}
@@ -13,7 +15,7 @@ func main() {
 		ProgramName: "ncdns",
 	}
 	config.ParseFatal(&cfg)
-	xlogconfig.Init()
+	dexlogconfig.Init()
 
 	// We use the configPath to resolve paths relative to the config file.
 	cfg.ConfigDir = filepath.Dir(config.ConfigFilePath())

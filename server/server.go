@@ -1,19 +1,20 @@
 package server
 
-import "gopkg.in/hlandau/madns.v1"
-import "github.com/hlandau/ncdns/backend"
-import "github.com/hlandau/ncdns/namecoin"
-import "github.com/miekg/dns"
-import "os"
-import "net"
-import "fmt"
-import "sync"
-import "strings"
-import "path/filepath"
-import "crypto"
-import "github.com/hlandau/xlog"
-
-const version = "1.0"
+import (
+	"crypto"
+	"fmt"
+	"github.com/hlandau/buildinfo"
+	"github.com/hlandau/ncdns/backend"
+	"github.com/hlandau/ncdns/namecoin"
+	"github.com/hlandau/xlog"
+	"github.com/miekg/dns"
+	"gopkg.in/hlandau/madns.v1"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+)
 
 var log, Log = xlog.New("ncdns.server")
 
@@ -24,8 +25,10 @@ type Server struct {
 	namecoinConn namecoin.Conn
 
 	mux         *dns.ServeMux
-	udpListener *dns.Server
-	tcpListener *dns.Server
+	udpServer   *dns.Server
+	udpConn     *net.UDPConn
+	tcpServer   *dns.Server
+	tcpListener net.Listener
 	wgStart     sync.WaitGroup
 }
 
@@ -61,7 +64,11 @@ func (cfg *Config) cpath(s string) string {
 	return filepath.Join(cfg.ConfigDir, s)
 }
 
+var ncdnsVersion string
+
 func New(cfg *Config) (s *Server, err error) {
+	ncdnsVersion = buildinfo.VersionSummary("github.com/hlandau/ncdns", "ncdns")
+
 	s = &Server{
 		cfg: *cfg,
 		namecoinConn: namecoin.Conn{
@@ -101,7 +108,7 @@ func New(cfg *Config) (s *Server, err error) {
 
 	ecfg := &madns.EngineConfig{
 		Backend:       b,
-		VersionString: "ncdns/" + version,
+		VersionString: ncdnsVersion,
 	}
 
 	// key setup
@@ -124,6 +131,29 @@ func New(cfg *Config) (s *Server, err error) {
 	}
 
 	s.engine, err = madns.NewEngine(ecfg)
+	if err != nil {
+		return
+	}
+
+	s.mux = dns.NewServeMux()
+	s.mux.Handle(".", s.engine)
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", s.cfg.Bind)
+	if err != nil {
+		return
+	}
+
+	s.tcpListener, err = net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		return
+	}
+
+	udpAddr, err := net.ResolveUDPAddr("udp", s.cfg.Bind)
+	if err != nil {
+		return
+	}
+
+	s.udpConn, err = net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		return
 	}
@@ -170,20 +200,16 @@ func (s *Server) loadKey(fn, privateFn string) (k *dns.DNSKEY, privatek crypto.P
 }
 
 func (s *Server) Start() error {
-	s.mux = dns.NewServeMux()
-	s.mux.Handle(".", s.engine)
-
 	s.wgStart.Add(2)
-	s.udpListener = s.runListener("udp")
-	s.tcpListener = s.runListener("tcp")
+	s.udpServer = s.runListener("udp")
+	s.tcpServer = s.runListener("tcp")
 	s.wgStart.Wait()
-
 	log.Info("Listeners started")
 	return nil
 }
 
 func (s *Server) doRunListener(ds *dns.Server) {
-	err := ds.ListenAndServe()
+	err := ds.ActivateAndServe()
 	log.Fatale(err)
 }
 
@@ -196,6 +222,15 @@ func (s *Server) runListener(net string) *dns.Server {
 			s.wgStart.Done()
 		},
 	}
+	switch net {
+	case "tcp":
+		ds.Listener = s.tcpListener
+	case "udp":
+		ds.PacketConn = s.udpConn
+	default:
+		panic("unreachable")
+	}
+
 	go s.doRunListener(ds)
 	return ds
 }
