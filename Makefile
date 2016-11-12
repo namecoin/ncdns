@@ -2,7 +2,7 @@ PROJNAME=github.com/hlandau/ncdns
 BINARIES=$(PROJNAME) $(PROJNAME)/ncdt $(PROJNAME)/ncdumpzone
 
 ###############################################################################
-# v1.13  NNSC:github.com/hlandau/degoutils/_stdenv/Makefile.ref
+# v1.14  NNSC:github.com/hlandau/degoutils/_stdenv/Makefile.ref
 # This is a standard Makefile for building Go code designed to be copied into
 # other projects. Code below this line is not intended to be modified.
 #
@@ -38,6 +38,7 @@ ifeq ($(V),1)
 endif
 
 ## Buildinfo
+USE_BUILDINFO ?= 1
 ifeq ($(USE_BUILDINFO),1)
 	BUILDINFO_FLAG=-ldflags "$$($$GOPATH/src/github.com/hlandau/buildinfo/gen $(1))"
 endif
