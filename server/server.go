@@ -78,9 +78,11 @@ func New(cfg *Config) (s *Server, err error) {
 		},
 	}
 
-	s.cfg.canonicalNameservers = strings.Split(s.cfg.CanonicalNameservers, ",")
-	for i := range s.cfg.canonicalNameservers {
-		s.cfg.canonicalNameservers[i] = dns.Fqdn(s.cfg.canonicalNameservers[i])
+	if s.cfg.CanonicalNameservers != "" {
+		s.cfg.canonicalNameservers = strings.Split(s.cfg.CanonicalNameservers, ",")
+		for i := range s.cfg.canonicalNameservers {
+			s.cfg.canonicalNameservers[i] = dns.Fqdn(s.cfg.canonicalNameservers[i])
+		}
 	}
 
 	if s.cfg.VanityIPs != "" {
