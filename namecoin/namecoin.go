@@ -1,13 +1,15 @@
 package namecoin
 
 // btcjson had to be modified a bit to get correct error reporting.
-import "github.com/hlandauf/btcjson"
-import "gopkg.in/hlandau/madns.v1/merr"
-import extratypes "github.com/hlandau/ncbtcjsontypes"
+import (
+	extratypes "github.com/hlandau/ncbtcjsontypes"
+	"github.com/hlandauf/btcjson"
+	"gopkg.in/hlandau/madns.v1/merr"
 
-import "fmt"
-import "expvar"
-import "sync/atomic"
+	"expvar"
+	"fmt"
+	"sync/atomic"
+)
 
 var cQueryCalls = expvar.NewInt("ncdns.namecoin.numQueryCalls")
 var cSyncCalls = expvar.NewInt("ncdns.namecoin.numSyncCalls")
@@ -27,7 +29,29 @@ func newID() int32 {
 type Conn struct {
 	Username string
 	Password string
-	Server   string
+
+	// If set, this is called to obtain the username and password instead of
+	// using the Username and Password fields.
+	GetAuth func() (username, password string, err error)
+
+	Server string
+}
+
+func (nc *Conn) getAuth() (username string, password string, err error) {
+	if nc.GetAuth == nil {
+		return nc.Username, nc.Password, nil
+	}
+
+	return nc.GetAuth()
+}
+
+func (nc *Conn) rpcSend(cmd btcjson.Cmd) (btcjson.Reply, error) {
+	username, password, err := nc.getAuth()
+	if err != nil {
+		return btcjson.Reply{}, err
+	}
+
+	return btcjson.RpcSend(username, password, nc.Server, cmd)
 }
 
 // Query the Namecoin daemon for a Namecoin domain (e.g. d/example).
@@ -42,7 +66,7 @@ func (nc *Conn) Query(name string) (v string, err error) {
 		return "", err
 	}
 
-	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	r, err := nc.rpcSend(cmd)
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +105,7 @@ func (nc *Conn) Sync(hash string, count int, wait bool) ([]extratypes.NameSyncEv
 		return nil, err
 	}
 
-	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	r, err := nc.rpcSend(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +136,7 @@ func (nc *Conn) CurHeight() (int, error) {
 		return 0, err
 	}
 
-	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	r, err := nc.rpcSend(cmd)
 	if err != nil {
 		return 0, err
 	}
@@ -140,7 +164,7 @@ func (nc *Conn) Filter(regexp string, maxage, from, count int) (names []extratyp
 		return nil, err
 	}
 
-	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	r, err := nc.rpcSend(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +192,7 @@ func (nc *Conn) Scan(from string, count int) (names []extratypes.NameFilterItem,
 		return nil, err
 	}
 
-	r, err := btcjson.RpcSend(nc.Username, nc.Password, nc.Server, cmd)
+	r, err := nc.rpcSend(cmd)
 	if err != nil {
 		return nil, err
 	}

@@ -31,13 +31,6 @@ var log, Log = xlog.New("ncdns.backend")
 type Config struct {
 	NamecoinConn namecoin.Conn
 
-	// Username and password to use for connecting to the Namecoin JSON-RPC interface.
-	//RPCUsername string
-	//RPCPassword string
-
-	// hostname:port to use for connecting to the Namecoin JSON-RPC interface.
-	//RPCAddress string
-
 	// Maximum entries to permit in name cache. If zero, a default value is used.
 	CacheMaxEntries int
 

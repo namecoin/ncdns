@@ -39,12 +39,13 @@ type Config struct {
 	ZonePublicKey  string `default:"" usage:"Path to the DNSKEY ZSK public key file; if one is not specified, a temporary one is generated on startup and used only for the duration of that process"`
 	ZonePrivateKey string `default:"" usage:"Path to the ZSK's corresponding private key file"`
 
-	NamecoinRPCUsername string `default:"" usage:"Namecoin RPC username"`
-	NamecoinRPCPassword string `default:"" usage:"Namecoin RPC password"`
-	NamecoinRPCAddress  string `default:"localhost:8336" usage:"Namecoin RPC server address"`
-	CacheMaxEntries     int    `default:"100" usage:"Maximum name cache entries"`
-	SelfName            string `default:"" usage:"The FQDN of this nameserver. If empty, a psuedo-hostname is generated."`
-	SelfIP              string `default:"127.127.127.127" usage:"The canonical IP address for this service"`
+	NamecoinRPCUsername   string `default:"" usage:"Namecoin RPC username"`
+	NamecoinRPCPassword   string `default:"" usage:"Namecoin RPC password"`
+	NamecoinRPCAddress    string `default:"localhost:8336" usage:"Namecoin RPC server address"`
+	NamecoinRPCCookiePath string `default:"" usage:"Namecoin RPC cookie path (if set, used instead of password)"`
+	CacheMaxEntries       int    `default:"100" usage:"Maximum name cache entries"`
+	SelfName              string `default:"" usage:"The FQDN of this nameserver. If empty, a psuedo-hostname is generated."`
+	SelfIP                string `default:"127.127.127.127" usage:"The canonical IP address for this service"`
 
 	HTTPListenAddr string `default:"" usage:"Address for webserver to listen at (default: disabled)"`
 
@@ -76,6 +77,10 @@ func New(cfg *Config) (s *Server, err error) {
 			Password: cfg.NamecoinRPCPassword,
 			Server:   cfg.NamecoinRPCAddress,
 		},
+	}
+
+	if s.cfg.NamecoinRPCCookiePath != "" {
+		s.namecoinConn.GetAuth = cookieRetriever(s.cfg.NamecoinRPCCookiePath)
 	}
 
 	if s.cfg.CanonicalNameservers != "" {
