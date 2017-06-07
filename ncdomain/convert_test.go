@@ -1,7 +1,7 @@
 package ncdomain_test
 
-import "github.com/hlandau/ncdns/ncdomain"
-import "github.com/hlandau/ncdns/testutil"
+import "github.com/namecoin/ncdns/ncdomain"
+import "github.com/namecoin/ncdns/testutil"
 import _ "github.com/hlandau/nctestsuite"
 import "testing"
 import "fmt"

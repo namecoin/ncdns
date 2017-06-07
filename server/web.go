@@ -2,8 +2,8 @@ package server
 
 import "net/http"
 import "html/template"
-import "github.com/hlandau/ncdns/util"
-import "github.com/hlandau/ncdns/ncdomain"
+import "github.com/namecoin/ncdns/util"
+import "github.com/namecoin/ncdns/ncdomain"
 import "github.com/miekg/dns"
 import "github.com/kr/pretty"
 import "path/filepath"

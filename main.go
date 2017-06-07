@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/hlandau/dexlogconfig"
-	"github.com/hlandau/ncdns/server"
+	"github.com/namecoin/ncdns/server"
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/service.v2"
 	"path/filepath"

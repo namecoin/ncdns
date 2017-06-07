@@ -6,7 +6,7 @@ import "fmt"
 import "github.com/miekg/dns"
 import "encoding/base64"
 import "encoding/hex"
-import "github.com/hlandau/ncdns/util"
+import "github.com/namecoin/ncdns/util"
 import "strings"
 import "strconv"
 
