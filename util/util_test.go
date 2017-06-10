@@ -1,7 +1,7 @@
 package util_test
 
 import "testing"
-import "github.com/hlandau/ncdns/util"
+import "github.com/namecoin/ncdns/util"
 import "gopkg.in/hlandau/madns.v1/merr"
 
 type item struct {

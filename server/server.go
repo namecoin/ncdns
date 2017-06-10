@@ -4,10 +4,10 @@ import (
 	"crypto"
 	"fmt"
 	"github.com/hlandau/buildinfo"
-	"github.com/hlandau/ncdns/backend"
-	"github.com/hlandau/ncdns/namecoin"
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
+	"github.com/namecoin/ncdns/backend"
+	"github.com/namecoin/ncdns/namecoin"
 	"gopkg.in/hlandau/madns.v1"
 	"net"
 	"os"
@@ -68,7 +68,7 @@ func (cfg *Config) cpath(s string) string {
 var ncdnsVersion string
 
 func New(cfg *Config) (s *Server, err error) {
-	ncdnsVersion = buildinfo.VersionSummary("github.com/hlandau/ncdns", "ncdns")
+	ncdnsVersion = buildinfo.VersionSummary("github.com/namecoin/ncdns", "ncdns")
 
 	s = &Server{
 		cfg: *cfg,

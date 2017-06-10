@@ -1,13 +1,13 @@
 package main
 
-import "github.com/hlandau/ncdns/ncdomain"
-import "github.com/hlandau/ncdns/namecoin"
+import "github.com/namecoin/ncdns/ncdomain"
+import "github.com/namecoin/ncdns/namecoin"
 import "flag"
 import "fmt"
 import "os"
 import "strconv"
 import "io/ioutil"
-import "github.com/hlandau/ncdns/util"
+import "github.com/namecoin/ncdns/util"
 
 var rpchost = flag.String("rpchost", "", "Namecoin RPC host:port")
 var rpcuser = flag.String("rpcuser", "", "Namecoin RPC username")

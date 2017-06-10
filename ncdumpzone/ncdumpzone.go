@@ -1,9 +1,9 @@
 package main
 
 import "gopkg.in/alecthomas/kingpin.v2"
-import "github.com/hlandau/ncdns/ncdomain"
-import "github.com/hlandau/ncdns/namecoin"
-import "github.com/hlandau/ncdns/util"
+import "github.com/namecoin/ncdns/ncdomain"
+import "github.com/namecoin/ncdns/namecoin"
+import "github.com/namecoin/ncdns/util"
 import "github.com/hlandau/xlog"
 import "strings"
 import "fmt"
