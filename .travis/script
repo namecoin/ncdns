@@ -17,7 +17,7 @@ echo Cross-compiling releases...
 mkdir -p "$GOPATH/releasing/idist" "$GOPATH/releasing/dist"
 
 # cgo crosscompile
-REPOS="github.com/$TRAVIS_REPO_SLUG"
+REPOS="github.com/$TRAVIS_REPO_SLUG/..."
 gox -cgo -osarch 'linux/386 linux/amd64' -output "$GOPATH/releasing/idist/ncdns-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" $REPOS
 RESULT1=$?
 
