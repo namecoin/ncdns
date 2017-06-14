@@ -22,7 +22,7 @@ gox -cgo -osarch 'linux/386 linux/amd64' -output "$GOPATH/releasing/idist/ncdns-
 RESULT1=$?
 
 # non-cgo crosscompile
-gox -osarch 'darwin/386 darwin/amd64 linux/arm freebsd/386 freebsd/amd64 freebsd/arm openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64' -output "$GOPATH/releasing/idist/ncdns-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" $REPOS
+gox -osarch 'darwin/386 darwin/amd64 linux/arm linux/arm64 linux/ppc64 linux/ppc64le freebsd/386 freebsd/amd64 freebsd/arm openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64 windows/386 windows/amd64' -output "$GOPATH/releasing/idist/ncdns-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" $REPOS
 RESULT2=$?
 
 echo cgo crosscompile exited with code $RESULT1
