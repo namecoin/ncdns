@@ -24,6 +24,8 @@ func TestSleeve256(t *testing.T) {
 		t.Error(err)
 	}
 
+	// To reproduce this with web-based tools, use https://www.wolframalpha.com/input/?i=hex%28floor%282^256%2Fpi%29%29
+	// and then convert from hex to base64 via https://holtstrom.com/michael/tools/hextopem.php
 	reference := "UXzBtyciCpT+E6vo+ppu4G2xSsyeIcgg/yix1e9d4rA="
 
 	if sleeve != reference {

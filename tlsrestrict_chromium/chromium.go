@@ -52,6 +52,9 @@ func BlockAllCAs() (map[string]interface{}, error) {
 	return rule, nil
 }
 
+// Calculates floor(2**256/pi), and encodes the result as base64.
+// Intended to be used as a SHA256 hash where I don't have a preimage up my sleeve.
+// Python2 version originally by Ryan Castellucci.  Go port, pi sourcing, and base64 output by Jeremy Rand.
 func Sleeve256() (string, error) {
 	var pi big.Float
 	var exp256Float big.Float
