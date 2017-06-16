@@ -1,6 +1,7 @@
 language: go
 go:
   - 1.7.1
+  - 1.8.3
 
 addons:
   apt:
@@ -14,6 +15,7 @@ sudo: false
 
 install:
   - go get -v -t ./...
+  - env GOOS=windows GOARCH=amd64 go get -d -v -t ./...
 script:
   - source ./.travis/script
 after_success:
