@@ -15,6 +15,7 @@ sudo: false
 
 install:
   - go get -v -t ./...
+  - env GOOS=windows GOARCH=amd64 go get -d -v -t ./...
 script:
   - source ./.travis/script
 after_success:
