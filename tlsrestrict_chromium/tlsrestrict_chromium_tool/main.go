@@ -19,7 +19,10 @@ func main() {
 	config := easyconfig.Configurator{
 		ProgramName: "tlsrestrict_chromium",
 	}
-	config.Parse(nil)
+	err := config.Parse(nil)
+	if err != nil {
+		log.Fatalf("Couldn't parse configuration: %s", err)
+	}
 
 	transportSecurityPath := transportSecurityPathFlag.Value()
 	domain := domainFlag.Value()
