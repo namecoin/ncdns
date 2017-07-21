@@ -4,12 +4,8 @@ import (
 	"github.com/namecoin/ncdns/certdehydrate"
 	"github.com/namecoin/ncdns/certinject"
 	"github.com/namecoin/ncdns/ncdomain"
-	"github.com/namecoin/ncdns/x509"
 	"github.com/hlandau/xlog"
 )
-
-import "bytes"
-import "encoding/hex"
 
 var log, Log = xlog.New("ncdns.tlshook")
 
