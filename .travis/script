@@ -1,6 +1,6 @@
 #!/bin/bash
 
-travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox
+travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v1
 
 go test -v ./...
 RESULT=$?
@@ -9,6 +9,44 @@ echo Done tests with exit code $RESULT
 if [ "$RESULT" != "0" ]; then
   return $RESULT
 fi
+
+# Static analysis
+
+gometalinter.v1 --install
+
+echo ""
+echo "gometalinter critical (should be no warnings):"
+gometalinter.v1 --enable-all \
+--disable=aligncheck \
+--disable=deadcode \
+--disable=dupl \
+--disable=errcheck \
+--disable=gas \
+--disable=gocyclo \
+--disable=gofmt \
+--disable=goimports \
+--disable=golint \
+--disable=gosimple \
+--disable=gotype \
+--disable=ineffassign \
+--disable=lll \
+--disable=misspell \
+--disable=staticcheck \
+--disable=unconvert \
+--disable=unparam \
+--disable=unused \
+--concurrency=3 \
+--deadline=10m \
+./...
+STATICRESULT1=$?
+
+echo ""
+echo "gometalinter non-critical (warnings expected):"
+gometalinter.v1 --enable-all \
+--concurrency=3 \
+--deadline=10m \
+./...
+STATICRESULT2=$?
 
 # Test cross-compilation. The binaries produced are also used for release
 # upload in after_success if this is a release tag.
@@ -29,10 +67,15 @@ RESULT2=$?
 
 echo cgo crosscompile exited with code $RESULT1
 echo non-cgo crosscompile exited with code $RESULT2
+echo critical gometalinter exited with code $STATICRESULT1
+echo non-critical gometalinter exited with code $STATICRESULT2
 
 if [ "$RESULT1" != "0" ]; then
   return $RESULT1
 fi
 if [ "$RESULT2" != "0" ]; then
   return $RESULT2
+fi
+if [ "$STATICRESULT1" != "0" ]; then
+  return $STATICRESULT1
 fi
