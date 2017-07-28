@@ -29,7 +29,9 @@ func DomainValueHookTLS(qname string, ncv *ncdomain.Value) (err error) {
 					
 					template := cert
 					
-					derBytes, err := certdehydrate.FillRehydratedCertTemplate(template, qname)
+					var derBytes []byte
+					
+					derBytes, err = certdehydrate.FillRehydratedCertTemplate(template, qname)
 					if err != nil {
 						log.Info("Failed to create certificate: ", err)
 						continue
