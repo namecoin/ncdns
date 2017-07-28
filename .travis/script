@@ -14,6 +14,8 @@ fi
 
 gometalinter.v1 --install
 
+# The --exclude line disables warnings on the portion of x509 that is copied
+# verbatim from the Go standard library.
 echo ""
 echo "gometalinter critical (should be no warnings):"
 gometalinter.v1 --enable-all \
@@ -37,6 +39,7 @@ gometalinter.v1 --enable-all \
 --disable=unused \
 --concurrency=3 \
 --deadline=10m \
+--exclude='^x509/([a-wy-z]|x509.go|x509_[a-rt-z])' \
 ./...
 STATICRESULT1=$?
 
@@ -45,6 +48,7 @@ echo "gometalinter non-critical (warnings expected):"
 gometalinter.v1 --enable-all \
 --concurrency=3 \
 --deadline=10m \
+--exclude='^x509/([a-wy-z]|x509.go|x509_[a-rt-z])' \
 ./...
 STATICRESULT2=$?
 
