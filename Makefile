@@ -1,4 +1,4 @@
-PROJNAME=github.com/hlandau/ncdns
+PROJNAME=github.com/namecoin/ncdns
 BINARIES=$(PROJNAME) $(PROJNAME)/ncdt $(PROJNAME)/ncdumpzone
 
 ###############################################################################
