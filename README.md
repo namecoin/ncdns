@@ -82,7 +82,7 @@ configured to use.
 Building
 --------
 
-On non-Windows platforms:
+Prerequisites:
 
 1. Ensure you have the Go tools installed.
 
@@ -90,20 +90,24 @@ On non-Windows platforms:
    installed. (Most distributions will have a package called `libcap-dev` or
    similar.)
 
-3. Run `make`. The source repository will be retrieved via `go get`
-   automatically.  You must have the Go compiler tools installed.
+Option A: Using Go build commands (works on any platform with Bash):
 
-On Windows platforms:
-
-1. Ensure you have the Go tools installed.
-
-2. Ensure you have the GOPATH environment variable set. (For those not not
+1. Ensure you have the GOPATH environment variable set. (For those not
    familar with Go, setting it to the path to an empty directory will suffice.
    The directory will be filled with build files.)
 
-3. Run `go get github.com/hlandau/ncdns`. The ncdns source code will be
-   retrieved automatically and ncdns will be built. The binary will be at
+2. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
+   retrieved automatically.
+
+3. Run `go generate github.com/namecoin/ncdns/...`.  Some source code will be generated.
+
+4. Run `go get -t github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at
    $GOPATH/bin/ncdns.
+
+Option B: Using Makefile (non-Windows platforms):
+
+1. Run `make`. The source repository will be retrieved via `go get`
+   automatically.
 
 ncdns can be run as a Windows service; see the output of `ncdns --help`.
 
