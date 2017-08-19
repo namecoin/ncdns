@@ -11,6 +11,11 @@ if [ -z "$GITHUB_TOKEN" ]; then
   return 0
 fi
 
+if [[ "${TRAVIS_GO_VERSION}." != "${RELEASE_GO_VERSION}."* ]]; then
+  echo "Travis Go version ($TRAVIS_GO_VERSION) is not the releasing version ($RELEASE_GO_VERSION), not releasing."
+  return 0
+fi
+
 # Make archives.
 echo Archiving releases...
 SRC_DIR="$(pwd)"
