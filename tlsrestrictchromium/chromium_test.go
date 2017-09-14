@@ -1,12 +1,12 @@
-package tlsrestrict_chromium_test
+package tlsrestrictchromium_test
 
 import (
 	"testing"
-	"github.com/namecoin/ncdns/tlsrestrict_chromium"
+	"github.com/namecoin/ncdns/tlsrestrictchromium"
 )
 
 func TestDnsHash(t *testing.T) {
-	bitHash, err := tlsrestrict_chromium.DnsHash("bit.")
+	bitHash, err := tlsrestrictchromium.DNSHash("bit.")
 	if err != nil {
 		t.Error(err)
 	}
@@ -19,7 +19,7 @@ func TestDnsHash(t *testing.T) {
 }
 
 func TestSleeve256(t *testing.T) {
-	sleeve, err := tlsrestrict_chromium.Sleeve256()
+	sleeve, err := tlsrestrictchromium.Sleeve256()
 	if err != nil {
 		t.Error(err)
 	}

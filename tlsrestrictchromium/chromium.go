@@ -1,4 +1,4 @@
-package tlsrestrict_chromium
+package tlsrestrictchromium
 
 import (
 	"encoding/base64"
@@ -10,7 +10,10 @@ import (
 	"crypto/sha256"
 )
 
-func DnsHash(fqdn string) (string, error) {
+// DNSHash converts an FQDN to DNS wire format, takes the SHA256 of it, and
+// then returns the result as a base64-encoded string.  This happens to be how
+// Chromium's HSTS/HPKP database internally stores domain names.
+func DNSHash(fqdn string) (string, error) {
 	domainNamePacked := make([]byte, 256)
 	offset, err := dns.PackDomainName(fqdn, domainNamePacked, 0, nil, false)
 	if err != nil {
@@ -23,8 +26,13 @@ func DnsHash(fqdn string) (string, error) {
 	return domainNameHashB64String, nil
 }
 
+// BlockAllCAs returns an HSTS/HPKP rule (serializable to Chromium JSON format)
+// that blacklists all built-in CA's from signing certs for subdomains of the
+// given domain name.  It doesn't include the domain name.  It has only been
+// tested with TLD's; it is unclear whether the rule will have any undesired
+// effects if applied to a 2nd-level (or higher level) domain name.
 func BlockAllCAs() (map[string]interface{}, error) {
-	ruleJson := `{
+	ruleJSON := `{
 		"dynamic_spki_hashes": [ "" ],
 		"dynamic_spki_hashes_expiry": 99999999999.9999,
 		"expiry": 99999999999.9999,
@@ -38,7 +46,7 @@ func BlockAllCAs() (map[string]interface{}, error) {
 
 	var rule map[string]interface{}
 
-	err := json.Unmarshal([]byte(ruleJson), &rule)
+	err := json.Unmarshal([]byte(ruleJSON), &rule)
 	if err != nil {
 		return nil, fmt.Errorf("Error parsing BlockAllCAs rule: %s", err)
 	}
@@ -52,9 +60,12 @@ func BlockAllCAs() (map[string]interface{}, error) {
 	return rule, nil
 }
 
-// Calculates floor(2**256/pi), and encodes the result as base64.
-// Intended to be used as a SHA256 hash where I don't have a preimage up my sleeve.
-// Python2 version originally by Ryan Castellucci.  Go port, pi sourcing, and base64 output by Jeremy Rand.
+// Sleeve256 calculates floor(2**256/pi), and encodes the result as base64.  It
+// is intended to be used as a SHA256 hash where I don't have a preimage up my
+// sleeve.
+//
+// Python2 version originally by Ryan Castellucci.  Go port, pi sourcing, and
+// base64 output by Jeremy Rand.
 func Sleeve256() (string, error) {
 	var pi big.Float
 	var exp256Float big.Float

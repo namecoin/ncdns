@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"log"
-	"github.com/namecoin/ncdns/tlsrestrict_chromium"
+	"github.com/namecoin/ncdns/tlsrestrictchromium"
 )
 
 var (
@@ -44,12 +44,12 @@ func main() {
 	}
 
 	// Chromium's TransportSecurity database uses keys of the form base64(sha256(dnsPack(fqdn)))
-	domainDnsHashB64String, err := tlsrestrict_chromium.DnsHash(domain)
+	domainDNSHashB64String, err := tlsrestrictchromium.DNSHash(domain)
 	if err != nil {
 		log.Fatalf("Couldn't hash domain name %s: %s", domain, err)
 	}
 
-	data[domainDnsHashB64String], err = tlsrestrict_chromium.BlockAllCAs()
+	data[domainDNSHashB64String], err = tlsrestrictchromium.BlockAllCAs()
 	if err != nil {
 		log.Fatalf("Couldn't assign BlockAllCAs: %s", err)
 	}
