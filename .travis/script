@@ -16,7 +16,7 @@ fi
 echo Cross-compiling releases...
 mkdir -p "$GOPATH/releasing/idist" "$GOPATH/releasing/dist"
 
-GOX_PARA=15
+GOX_PARA=3
 
 # cgo crosscompile
 REPOS="github.com/$TRAVIS_REPO_SLUG/..."
