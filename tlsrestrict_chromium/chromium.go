@@ -18,7 +18,7 @@ func DnsHash(fqdn string) (string, error) {
 	}
 
 	domainNameHashBytes := sha256.Sum256(domainNamePacked[:offset])
-	domainNameHashB64String := string(base64.StdEncoding.EncodeToString(domainNameHashBytes[:]))
+	domainNameHashB64String := base64.StdEncoding.EncodeToString(domainNameHashBytes[:])
 
 	return domainNameHashB64String, nil
 }
@@ -90,7 +90,7 @@ func Sleeve256() (string, error) {
 		return "", fmt.Errorf("Error decoding hex: %s", err)
 	}
 
-	resultB64 := string(base64.StdEncoding.EncodeToString(resultBytes))
+	resultB64 := base64.StdEncoding.EncodeToString(resultBytes)
 
 	return resultB64, nil
 }
