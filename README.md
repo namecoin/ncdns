@@ -136,10 +136,12 @@ Linux:
     a `.bit` domain. If you want to use DNSSEC, generate keys as shown above
     and configure ncdns appropriately.
 
-  - Install and setup the Unbound recursive resolver on your system. Set it up
-    to start at boot. See above for configuration suggestions. If you wish to
-    use DNSSEC, add the ncdns DNSKEY to Unbound as a trust anchor as shown
-    above. (Make sure Unbound listens only on localhost.)
+  - Install and setup the Unbound recursive resolver on your system. On most
+    systems, the recommended way to install Unbound is to install DNSSEC
+    Trigger, which installs and configures Unbound automatically.
+
+    If you wish to use DNSSEC, add the ncdns DNSKEY to Unbound as a trust
+    anchor as shown above. See above for configuration suggestions.
 
   - Edit `/etc/resolv.conf` to point to the Unbound resolver at 127.0.0.1.
     (If this file is generated automatically via DHCP or similar, you may
