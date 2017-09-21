@@ -14,6 +14,10 @@ import (
 
 import "github.com/namecoin/ncdns/x509"
 
+// A DehydratedCertificate represents the (nearly) minimal set of data required
+// to deterministically construct a valid x509 certificate when combined with a
+// domain name.  See the Dehydrated TLS Certificates specification at:
+// https://github.com/namecoin/proposals/blob/master/ifa-0003.md
 // TODO: add a version field
 type DehydratedCertificate struct {
 	PubkeyB64 string
@@ -23,6 +27,8 @@ type DehydratedCertificate struct {
 	SignatureB64 string
 }
 
+// SerialNumber calculates the certificate serial number according to the
+// Dehydrated TLS Certificates specification.
 func (dehydrated DehydratedCertificate) SerialNumber(name string) ([]byte, error){
 
 	nameHash := sha256.Sum256([]byte(name))
@@ -63,6 +69,8 @@ func (dehydrated DehydratedCertificate) String() string {
 	return string(binOutput)
 }
 
+// ParseDehydratedCert parses a dehydrated certificate from an interface as
+// would be returned by a JSON Unmarshaler.
 func ParseDehydratedCert(data interface{}) (*DehydratedCertificate, error) {
 	dehydrated, ok := data.([]interface{})
 	if !ok {
@@ -122,6 +130,9 @@ func ParseDehydratedCert(data interface{}) (*DehydratedCertificate, error) {
 	return &result, nil
 }
 
+// DehydrateCert dehydrates a certificate.  If the input certificate is not
+// compatible with the Dehydrated TLS Certificates specification, the resulting
+// dehydrated certificate will not rehydrate into a valid x509 certificate.
 func DehydrateCert(cert *x509.Certificate) (*DehydratedCertificate, error) {
 
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
@@ -154,10 +165,10 @@ func DehydrateCert(cert *x509.Certificate) (*DehydratedCertificate, error) {
 	return &result, nil
 }
 
-// Accepts as input the bare minimum data needed to produce a valid cert.
-// The input is untrusted.
-// The output is safe.
-// The timestamps are in 5-minute increments.
+// RehydrateCert converts a dehydrated certificate into a standard x509
+// certificate, but does not fill in the domain name or any fields that depend
+// on it.  The resulting certificate is intended to be used as input to
+// FillRehydratedCertTemplate. 
 func RehydrateCert(dehydrated *DehydratedCertificate) (*x509.Certificate, error) {
 
 	pubkeyBin, err := base64.StdEncoding.DecodeString(dehydrated.PubkeyB64)
@@ -205,6 +216,9 @@ func RehydrateCert(dehydrated *DehydratedCertificate) (*x509.Certificate, error)
 	return &template, nil
 }
 
+// FillRehydratedCertTemplate fills in the domain name (and all dependent
+// fields) to an x509 certificate that was returned by RehydrateCert, and
+// returns a []byte suitable for inserting into a TLS trust store.
 func FillRehydratedCertTemplate(template x509.Certificate, name string) ([]byte, error) {
 
 	template.Subject = pkix.Name{
