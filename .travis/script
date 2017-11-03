@@ -60,8 +60,9 @@ mkdir -p "$GOPATH/releasing/idist" "$GOPATH/releasing/dist"
 
 GOX_PARA=3
 
-# cgo crosscompile
 REPOS="github.com/$TRAVIS_REPO_SLUG/..."
+
+# cgo crosscompile
 gox -parallel=$GOX_PARA -cgo -osarch 'linux/386 linux/amd64' -output "$GOPATH/releasing/idist/ncdns-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" $REPOS
 RESULT1=$?
 
