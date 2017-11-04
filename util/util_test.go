@@ -13,13 +13,13 @@ type item struct {
 }
 
 var items = []item{
-	item{"", "", "", "", ""},
-	item{"a", "a", "", "a", ""},
-	item{"alpha", "alpha", "", "alpha", ""},
-	item{"alpha.beta", "beta", "alpha", "alpha", "beta"},
-	item{"alpha.beta.gamma", "gamma", "alpha.beta", "alpha", "beta.gamma"},
-	item{"alpha.beta.gamma.delta", "delta", "alpha.beta.gamma", "alpha", "beta.gamma.delta"},
-	item{"alpha.beta.gamma.delta.", "delta", "alpha.beta.gamma", "alpha", "beta.gamma.delta."},
+	{"", "", "", "", ""},
+	{"a", "a", "", "a", ""},
+	{"alpha", "alpha", "", "alpha", ""},
+	{"alpha.beta", "beta", "alpha", "alpha", "beta"},
+	{"alpha.beta.gamma", "gamma", "alpha.beta", "alpha", "beta.gamma"},
+	{"alpha.beta.gamma.delta", "delta", "alpha.beta.gamma", "alpha", "beta.gamma.delta"},
+	{"alpha.beta.gamma.delta.", "delta", "alpha.beta.gamma", "alpha", "beta.gamma.delta."},
 }
 
 func TestSplitDomainHead(t *testing.T) {
@@ -51,17 +51,17 @@ type aitem struct {
 }
 
 var aitems = []aitem{
-	aitem{"", "bit", "", "", "", merr.ErrNotInZone},
-	aitem{".", "bit", "", "", "", merr.ErrNotInZone},
-	aitem{"d.", "bit", "", "", "", merr.ErrNotInZone},
-	aitem{"a.b.c.d.", "bit", "", "", "", merr.ErrNotInZone},
-	aitem{"a.b.c.d.bit.", "bit", "a.b.c", "d", "bit", nil},
-	aitem{"d.bit.", "bit", "", "d", "bit", nil},
-	aitem{"bit.", "bit", "", "", "bit", nil},
-	aitem{"bit.x.y.z.", "bit", "", "", "bit.x.y.z", nil},
-	aitem{"d.bit.x.y.z.", "bit", "", "d", "bit.x.y.z", nil},
-	aitem{"c.d.bit.x.y.z.", "bit", "c", "d", "bit.x.y.z", nil},
-	aitem{"a.b.c.d.bit.x.y.z.", "bit", "a.b.c", "d", "bit.x.y.z", nil},
+	{"", "bit", "", "", "", merr.ErrNotInZone},
+	{".", "bit", "", "", "", merr.ErrNotInZone},
+	{"d.", "bit", "", "", "", merr.ErrNotInZone},
+	{"a.b.c.d.", "bit", "", "", "", merr.ErrNotInZone},
+	{"a.b.c.d.bit.", "bit", "a.b.c", "d", "bit", nil},
+	{"d.bit.", "bit", "", "d", "bit", nil},
+	{"bit.", "bit", "", "", "bit", nil},
+	{"bit.x.y.z.", "bit", "", "", "bit.x.y.z", nil},
+	{"d.bit.x.y.z.", "bit", "", "d", "bit.x.y.z", nil},
+	{"c.d.bit.x.y.z.", "bit", "c", "d", "bit.x.y.z", nil},
+	{"a.b.c.d.bit.x.y.z.", "bit", "a.b.c", "d", "bit.x.y.z", nil},
 }
 
 func TestSplitDomainByFloatingAnchor(t *testing.T) {
