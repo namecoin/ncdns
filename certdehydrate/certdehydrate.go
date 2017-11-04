@@ -20,16 +20,16 @@ import "github.com/namecoin/ncdns/x509"
 // https://github.com/namecoin/proposals/blob/master/ifa-0003.md
 // TODO: add a version field
 type DehydratedCertificate struct {
-	PubkeyB64 string
-	NotBeforeScaled int64
-	NotAfterScaled int64
+	PubkeyB64          string
+	NotBeforeScaled    int64
+	NotAfterScaled     int64
 	SignatureAlgorithm int64
-	SignatureB64 string
+	SignatureB64       string
 }
 
 // SerialNumber calculates the certificate serial number according to the
 // Dehydrated TLS Certificates specification.
-func (dehydrated DehydratedCertificate) SerialNumber(name string) ([]byte, error){
+func (dehydrated DehydratedCertificate) SerialNumber(name string) ([]byte, error) {
 
 	nameHash := sha256.Sum256([]byte(name))
 
@@ -119,12 +119,12 @@ func ParseDehydratedCert(data interface{}) (*DehydratedCertificate, error) {
 		return nil, fmt.Errorf("Dehydrated cert signature must be a string")
 	}
 
-	result := DehydratedCertificate {
-		PubkeyB64:             pubkeyB64,
-		NotBeforeScaled:       int64(notBeforeScaled),
-		NotAfterScaled:        int64(notAfterScaled),
-		SignatureAlgorithm:    int64(signatureAlgorithm),
-		SignatureB64:          signatureB64,
+	result := DehydratedCertificate{
+		PubkeyB64:          pubkeyB64,
+		NotBeforeScaled:    int64(notBeforeScaled),
+		NotAfterScaled:     int64(notAfterScaled),
+		SignatureAlgorithm: int64(signatureAlgorithm),
+		SignatureB64:       signatureB64,
 	}
 
 	return &result, nil
@@ -155,11 +155,11 @@ func DehydrateCert(cert *x509.Certificate) (*DehydratedCertificate, error) {
 	signatureB64 := base64.StdEncoding.EncodeToString(signatureBytes)
 
 	result := DehydratedCertificate{
-		PubkeyB64:             pubkeyB64,
-		NotBeforeScaled:       notBeforeScaled,
-		NotAfterScaled:        notAfterScaled,
-		SignatureAlgorithm:    signatureAlgorithm,
-		SignatureB64:          signatureB64,
+		PubkeyB64:          pubkeyB64,
+		NotBeforeScaled:    notBeforeScaled,
+		NotAfterScaled:     notAfterScaled,
+		SignatureAlgorithm: signatureAlgorithm,
+		SignatureB64:       signatureB64,
 	}
 
 	return &result, nil
@@ -168,7 +168,7 @@ func DehydrateCert(cert *x509.Certificate) (*DehydratedCertificate, error) {
 // RehydrateCert converts a dehydrated certificate into a standard x509
 // certificate, but does not fill in the domain name or any fields that depend
 // on it.  The resulting certificate is intended to be used as input to
-// FillRehydratedCertTemplate. 
+// FillRehydratedCertTemplate.
 func RehydrateCert(dehydrated *DehydratedCertificate) (*x509.Certificate, error) {
 
 	pubkeyBin, err := base64.StdEncoding.DecodeString(dehydrated.PubkeyB64)
@@ -198,19 +198,19 @@ func RehydrateCert(dehydrated *DehydratedCertificate) (*x509.Certificate, error)
 
 	template := x509.Certificate{
 		SerialNumber: big.NewInt(1),
-		NotBefore: notBefore,
-		NotAfter: notAfter,
+		NotBefore:    notBefore,
+		NotAfter:     notAfter,
 
 		// x509.KeyUsageKeyEncipherment is used for RSA key exchange, but not DHE/ECDHE key exchange.  Since everyone should be using ECDHE (due to forward secrecy), we disallow x509.KeyUsageKeyEncipherment in our template.
 		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		KeyUsage:              x509.KeyUsageDigitalSignature, 
+		KeyUsage: x509.KeyUsageDigitalSignature,
 
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 
 		SignatureAlgorithm: signatureAlgorithm,
-		PublicKey: pubkey,
-		Signature: signature,
+		PublicKey:          pubkey,
+		Signature:          signature,
 	}
 
 	return &template, nil
@@ -222,7 +222,7 @@ func RehydrateCert(dehydrated *DehydratedCertificate) (*x509.Certificate, error)
 func FillRehydratedCertTemplate(template x509.Certificate, name string) ([]byte, error) {
 
 	template.Subject = pkix.Name{
-		CommonName: name,
+		CommonName:   name,
 		SerialNumber: "Namecoin TLS Certificate",
 	}
 
