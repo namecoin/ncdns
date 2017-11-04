@@ -14,6 +14,9 @@ fi
 
 gometalinter.v1 --install
 
+# aligncheck is disabled because of these comments:
+# * https://www.reddit.com/r/golang/comments/3lahav/aligncheck_helps_to_find_inefficiently_packed/cv4u4lg/
+# * https://www.reddit.com/r/golang/comments/3lahav/aligncheck_helps_to_find_inefficiently_packed/cv5wnom/
 # The --exclude line disables warnings on the portion of x509 that is copied
 # verbatim from the Go standard library.
 echo ""
