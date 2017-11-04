@@ -32,7 +32,6 @@ gometalinter.v1 --enable-all \
 --disable=golint \
 --disable=ineffassign \
 --disable=lll \
---disable=misspell \
 --disable=staticcheck \
 --disable=unconvert \
 --disable=unparam \
