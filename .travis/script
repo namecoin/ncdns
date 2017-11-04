@@ -28,7 +28,6 @@ gometalinter.v1 --enable-all \
 --disable=goimports \
 --disable=golint \
 --disable=gosimple \
---disable=gotype \
 --disable=ineffassign \
 --disable=lll \
 --disable=misspell \
