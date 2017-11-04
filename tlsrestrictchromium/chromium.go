@@ -1,13 +1,13 @@
 package tlsrestrictchromium
 
 import (
-	"encoding/base64"
-	"math/big"
-	"github.com/miekg/dns"
-	"encoding/hex"
-	"fmt"
-	"encoding/json"
 	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"github.com/miekg/dns"
+	"math/big"
 )
 
 // DNSHash converts an FQDN to DNS wire format, takes the SHA256 of it, and
