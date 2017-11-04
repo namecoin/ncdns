@@ -25,7 +25,6 @@ gometalinter.v1 --enable-all \
 --disable=errcheck \
 --disable=gas \
 --disable=gocyclo \
---disable=gofmt \
 --disable=goimports \
 --disable=golint \
 --disable=gosimple \
