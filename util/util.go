@@ -79,7 +79,7 @@ func SplitDomainByFloatingAnchor(qname, anchor string) (subname, basename, rootn
 				return
 			}
 
-			rootname = strings.Join(parts[i:len(parts)], ".")
+			rootname = strings.Join(parts[i:], ".")
 			basename = parts[i-1]
 			subname = strings.Join(parts[0:i-1], ".")
 			return
