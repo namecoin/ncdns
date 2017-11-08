@@ -54,10 +54,22 @@ func (dehydrated DehydratedCertificate) SerialNumber(name string) ([]byte, error
 	notAfterHash := sha256.Sum256(notAfterScaledBuf.Bytes())
 
 	serialHash := sha256.New()
-	serialHash.Write(nameHash[:])
-	serialHash.Write(pubkeyHash[:])
-	serialHash.Write(notBeforeHash[:])
-	serialHash.Write(notAfterHash[:])
+	_, err = serialHash.Write(nameHash[:])
+	if err != nil {
+		return nil, fmt.Errorf("serialHash.Write of nameHash failed: %s", err)
+	}
+	_, err = serialHash.Write(pubkeyHash[:])
+	if err != nil {
+		return nil, fmt.Errorf("serialHash.Write of pubkeyHash failed: %s", err)
+	}
+	_, err = serialHash.Write(notBeforeHash[:])
+	if err != nil {
+		return nil, fmt.Errorf("serialHash.Write of notBeforeHash failed: %s", err)
+	}
+	_, err = serialHash.Write(notAfterHash[:])
+	if err != nil {
+		return nil, fmt.Errorf("serialHash.Write of notAfterHash failed: %s", err)
+	}
 
 	// 19 bytes will be less than 2^159, see https://crypto.stackexchange.com/a/260
 	return serialHash.Sum(nil)[0:19], nil
