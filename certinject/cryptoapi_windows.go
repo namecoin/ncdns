@@ -1,12 +1,12 @@
 package certinject
 
 import (
-	"golang.org/x/sys/windows/registry"
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"strings"
+	"golang.org/x/sys/windows/registry"
 	"math"
+	"strings"
 	"time"
 )
 
@@ -64,7 +64,7 @@ func injectCertCryptoApi(derBytes []byte) {
 	certLength := len(derBytes)
 
 	// Header for a stripped Windows Certificate Registry Blob
-	certBlobHeader := []byte{0x20, 0, 0, 0, 0x01, 0, 0, 0, byte( (certLength >> 0) & 0xFF), byte( (certLength >> 8) & 0xFF), byte( (certLength >> 16) & 0xFF), byte( (certLength >> 24) & 0xFF) }
+	certBlobHeader := []byte{0x20, 0, 0, 0, 0x01, 0, 0, 0, byte((certLength >> 0) & 0xFF), byte((certLength >> 8) & 0xFF), byte((certLength >> 16) & 0xFF), byte((certLength >> 24) & 0xFF)}
 
 	// Construct the Blob
 	certBlob := append(certBlobHeader, derBytes...)
@@ -99,7 +99,7 @@ func injectCertCryptoApi(derBytes []byte) {
 	}
 	defer certKey.Close()
 
-	// Add a magic value which indicates that the certificate is a 
+	// Add a magic value which indicates that the certificate is a
 	// Namecoin cert.  This will be used for deleting expired certs.
 	// However, we have to delete it before we create it, so that we make sure that the "last modified" metadata gets updated.
 	// If an error occurs during deletion, we ignore it, since it probably just means it wasn't there already.
@@ -185,7 +185,7 @@ func checkCertExpiredCryptoApi(certStoreKey registry.Key, subKeyName string) (bo
 	certKeyModTime := certKeyInfo.ModTime()
 
 	// If the cert's last modified timestamp differs too much from the current time in either direction, consider it expired
-	expired := math.Abs( time.Since(certKeyModTime).Seconds() ) > float64(certExpirePeriod.Value())
+	expired := math.Abs(time.Since(certKeyModTime).Seconds()) > float64(certExpirePeriod.Value())
 
 	return expired, nil
 }

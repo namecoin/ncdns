@@ -5,7 +5,7 @@
 // Generate a self-signed X.509 certificate for a TLS server. Outputs to
 // 'cert.pem' and 'key.pem' and will overwrite existing files.
 
-// This code has been modified from the stock Go code to generate 
+// This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
 package main
@@ -22,12 +22,12 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"github.com/namecoin/ncdns/certdehydrate"
+	"github.com/namecoin/ncdns/x509"
 	"log"
 	"math/big"
 	"os"
 	"time"
-	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/ncdns/x509"
 )
 
 var (
@@ -106,19 +106,19 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Failed to parse creation date: %s\n", err)
 		os.Exit(1)
 	}
-	
+
 	var notAfter time.Time
 	notAfter, err = time.Parse("Jan 2 15:04:05 2006", *validTo)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse expiry date: %s\n", err)
 		os.Exit(1)
 	}
-	
+
 	timestampPrecision := int64(5 * 60)
-	
-	notBeforeFloored := time.Unix( ( notBefore.Unix() / timestampPrecision ) * timestampPrecision, 0 )
-	notAfterFloored := time.Unix( ( notAfter.Unix() / timestampPrecision ) * timestampPrecision, 0 )
-	
+
+	notBeforeFloored := time.Unix((notBefore.Unix()/timestampPrecision)*timestampPrecision, 0)
+	notAfterFloored := time.Unix((notAfter.Unix()/timestampPrecision)*timestampPrecision, 0)
+
 	// Serial components
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
 	if err != nil {
@@ -127,12 +127,12 @@ func main() {
 	pubkeyB64 := base64.StdEncoding.EncodeToString(pubkeyBytes)
 	notBeforeScaled := notBeforeFloored.Unix() / timestampPrecision
 	notAfterScaled := notAfterFloored.Unix() / timestampPrecision
-	
+
 	// Calculate serial
-	serialDehydrated := certdehydrate.DehydratedCertificate {
-		PubkeyB64: pubkeyB64,
+	serialDehydrated := certdehydrate.DehydratedCertificate{
+		PubkeyB64:       pubkeyB64,
 		NotBeforeScaled: notBeforeScaled,
-		NotAfterScaled: notAfterScaled,
+		NotAfterScaled:  notAfterScaled,
 	}
 	serialNumber := big.NewInt(1)
 	serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
@@ -144,7 +144,7 @@ func main() {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName: *host,
+			CommonName:   *host,
 			SerialNumber: "Namecoin TLS Certificate",
 		},
 		NotBefore: notBeforeFloored,
@@ -152,7 +152,7 @@ func main() {
 
 		// x509.KeyUsageKeyEncipherment is used for RSA key exchange, but not DHE/ECDHE key exchange.  Since everyone should be using ECDHE (due to forward secrecy), we disallow x509.KeyUsageKeyEncipherment in our template.
 		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		KeyUsage:              x509.KeyUsageDigitalSignature, 
+		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
@@ -180,38 +180,38 @@ func main() {
 	pem.Encode(keyOut, pemBlockForKey(priv))
 	keyOut.Close()
 	log.Print("written key.pem\n")
-	
+
 	parsedResult, err := x509.ParseCertificate(derBytes)
 	if err != nil {
 		log.Fatal("failed to parse output cert: ", err)
 	}
-	
+
 	dehydrated, err := certdehydrate.DehydrateCert(parsedResult)
 	if err != nil {
 		log.Fatal("failed to dehydrate result cert: ", err)
 	}
-	
+
 	rehydrated, err := certdehydrate.RehydrateCert(dehydrated)
 	if err != nil {
 		log.Fatal("failed to rehydrate result cert: ", err)
 	}
-	
+
 	rehydratedDerBytes, err := certdehydrate.FillRehydratedCertTemplate(*rehydrated, *host)
 	if err != nil {
 		log.Fatal("failed to fill rehydrated result cert: ", err)
 	}
-	
-	if ! bytes.Equal(derBytes, rehydratedDerBytes) {
+
+	if !bytes.Equal(derBytes, rehydratedDerBytes) {
 		log.Fatal("ERROR: The cert did not rehydrate to an identical form.  This is a bug; do not use the generated certificate.")
 	}
-	
+
 	log.Print("Your Namecoin cert is: {\"d8\":", dehydrated, "}")
 
-	log.Print("SUCCESS: The cert rehydrated to an identical form.  Place the generated files in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.");
+	log.Print("SUCCESS: The cert rehydrated to an identical form.  Place the generated files in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
 
 	if len(*falseHost) > 0 {
 		var falsePriv interface{}
-		
+
 		switch *ecdsaCurve {
 		case "P224":
 			falsePriv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
@@ -228,32 +228,32 @@ func main() {
 		if err != nil {
 			log.Fatalf("failed to generate false private key: %s", err)
 		}
-		
+
 		falseSerialNumber := big.NewInt(2)
 
 		falseTemplate := x509.Certificate{
 			SerialNumber: falseSerialNumber,
 			Subject: pkix.Name{
-				CommonName: *falseHost,
+				CommonName:   *falseHost,
 				SerialNumber: "Namecoin TLS Certificate",
 			},
 			NotBefore: notBefore,
 			NotAfter:  notAfter,
-	
+
 			// x509.KeyUsageKeyEncipherment is used for RSA key exchange, but not DHE/ECDHE key exchange.  Since everyone should be using ECDHE (due to forward secrecy), we disallow x509.KeyUsageKeyEncipherment in our template.
 			//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			KeyUsage:              x509.KeyUsageDigitalSignature, 
+			KeyUsage:              x509.KeyUsageDigitalSignature,
 			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			BasicConstraintsValid: true,
 		}
-	
+
 		falseTemplate.DNSNames = append(falseTemplate.DNSNames, *falseHost)
-		
+
 		falseDerBytes, err := x509.CreateCertificate(rand.Reader, &falseTemplate, &template, publicKey(falsePriv), priv)
 		if err != nil {
 			log.Fatalf("Failed to create false certificate: %s", err)
 		}
-	
+
 		falseCertOut, err := os.Create("falseCert.pem")
 		if err != nil {
 			log.Fatalf("failed to open falseCert.pem for writing: %s", err)
@@ -261,7 +261,7 @@ func main() {
 		pem.Encode(falseCertOut, &pem.Block{Type: "CERTIFICATE", Bytes: falseDerBytes})
 		falseCertOut.Close()
 		log.Print("written falseCert.pem\n")
-		
+
 		falseKeyOut, err := os.OpenFile("falseKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 		if err != nil {
 			log.Print("failed to open falseKey.pem for writing:", err)

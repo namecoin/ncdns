@@ -31,21 +31,21 @@ const defaultTTL = 600
 // Therefore when qualifying names in a Value yourself you must check if the
 // input string is "=" and if so, replace it with "" first.
 type Value struct {
-	IP           []net.IP
-	IP6          []net.IP
-	NS           []string
-	Alias        string
-	HasAlias     bool // True if Alias was specified. Necessary as "" is a valid relative alias.
-	Translate    string
-	HasTranslate bool // True if Translate was specified. Necessary as "" is a valid relative value for Translate.
-	DS           []*dns.DS
-	TXT          [][]string
-	SRV          []*dns.SRV
-	Hostmaster   string    // "hostmaster@example.com"
-	MX           []*dns.MX // header name is left blank
-	TLSA         []*dns.TLSA
+	IP            []net.IP
+	IP6           []net.IP
+	NS            []string
+	Alias         string
+	HasAlias      bool // True if Alias was specified. Necessary as "" is a valid relative alias.
+	Translate     string
+	HasTranslate  bool // True if Translate was specified. Necessary as "" is a valid relative value for Translate.
+	DS            []*dns.DS
+	TXT           [][]string
+	SRV           []*dns.SRV
+	Hostmaster    string    // "hostmaster@example.com"
+	MX            []*dns.MX // header name is left blank
+	TLSA          []*dns.TLSA
 	TLSAGenerated []x509.Certificate // Certs can be dehydrated in the blockchain, they will be put here without SAN values.  SAN must be filled in before use.
-	Map          map[string]*Value // may contain and "*", will not contain ""
+	Map           map[string]*Value  // may contain and "*", will not contain ""
 
 	// set if the value is at the top level (alas necessary for relname interpretation)
 	IsTopLevel bool
@@ -249,28 +249,26 @@ func (v *Value) appendSRVs(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, e
 	return out, nil
 }
 
-
-
 func (v *Value) appendTLSA(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
 	for _, tlsa := range v.TLSA {
 		out = append(out, tlsa)
 	}
 
 	for _, cert := range v.TLSAGenerated {
-		
+
 		template := cert
-		
+
 		_, nameNoPort := util.SplitDomainTail(suffix)
 		_, nameNoPortOrProtocol := util.SplitDomainTail(nameNoPort)
-		
+
 		derBytes, err := certdehydrate.FillRehydratedCertTemplate(template, nameNoPortOrProtocol)
 		if err != nil {
 			// TODO: add debug output here
 			continue
 		}
-		
+
 		derBytesHex := hex.EncodeToString(derBytes)
-		
+
 		out = append(out, &dns.TLSA{
 			Hdr: dns.RR_Header{Name: suffix, Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
 				Ttl: defaultTTL},
@@ -279,9 +277,9 @@ func (v *Value) appendTLSA(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, e
 			MatchingType: uint8(0),
 			Certificate:  strings.ToUpper(derBytesHex),
 		})
-	
+
 	}
-	
+
 	return out, nil
 }
 
@@ -854,14 +852,14 @@ func parseTLSADehydrated(tlsa1dehydrated interface{}, v *Value) error {
 	if err != nil {
 		return fmt.Errorf("Error parsing dehydrated certificate: %s", err)
 	}
-	
+
 	template, err := certdehydrate.RehydrateCert(dehydrated)
 	if err != nil {
 		return fmt.Errorf("Error rehydrating certificate: %s", err)
 	}
-	
+
 	v.TLSAGenerated = append(v.TLSAGenerated, *template)
-	
+
 	return nil
 }
 
@@ -927,7 +925,7 @@ func parseTLSA(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 			var tlsa1m map[string]interface{}
 
 			if _, ok := tlsa1.([]interface{}); ok {
-				tlsa1m = map[string]interface{} {
+				tlsa1m = map[string]interface{}{
 					"dane": tlsa1,
 				}
 			} else {

@@ -1,8 +1,8 @@
 package tlsrestrictchromium_test
 
 import (
-	"testing"
 	"github.com/namecoin/ncdns/tlsrestrictchromium"
+	"testing"
 )
 
 func TestDnsHash(t *testing.T) {
