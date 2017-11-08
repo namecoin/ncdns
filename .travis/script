@@ -1,6 +1,6 @@
 #!/bin/bash
 
-travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v1
+travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v1 github.com/miekg/exdns/q github.com/namecoin/dns-prop279
 
 go test -v ./...
 RESULT=$?
@@ -60,8 +60,9 @@ mkdir -p "$GOPATH/releasing/idist" "$GOPATH/releasing/dist"
 
 GOX_PARA=3
 
+REPOS="github.com/$TRAVIS_REPO_SLUG/... github.com/miekg/exdns/q github.com/namecoin/dns-prop279/..."
+
 # cgo crosscompile
-REPOS="github.com/$TRAVIS_REPO_SLUG/..."
 gox -parallel=$GOX_PARA -cgo -osarch 'linux/386 linux/amd64' -output "$GOPATH/releasing/idist/ncdns-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" $REPOS
 RESULT1=$?
 
