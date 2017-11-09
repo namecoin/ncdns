@@ -39,6 +39,7 @@ import (
 )
 
 var (
+	//host       = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
 	host       = flag.String("host", "", "Hostname to generate a certificate for (only use one)")
 	validFrom  = flag.String("start-date", "", "Creation date formatted as Jan 1 15:04:05 2011")
 	validFor   = flag.Duration("duration", 365*24*time.Hour, "Duration that certificate is valid for")
@@ -234,85 +235,6 @@ func main() {
 	log.Print("SUCCESS: The cert rehydrated to an identical form.  Place the generated files in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
 
 	if len(*falseHost) > 0 {
-		var falsePriv interface{}
-
-		switch *ecdsaCurve {
-		case "":
-			//falsePriv, err = rsa.GenerateKey(rand.Reader, *rsaBits)
-			log.Fatalf("Missing required --ecdsa-curve parameter")
-		case "P224":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
-		case "P256":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		case "P384":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-		case "P521":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
-		default:
-			fmt.Fprintf(os.Stderr, "Unrecognized elliptic curve: %q", *ecdsaCurve)
-			os.Exit(1)
-		}
-		if err != nil {
-			log.Fatalf("failed to generate false private key: %s", err)
-		}
-
-		falseSerialNumber := big.NewInt(2)
-
-		falseTemplate := x509.Certificate{
-			SerialNumber: falseSerialNumber,
-			Subject: pkix.Name{
-				//Organization: []string{"Acme Co"},
-				CommonName:   *falseHost,
-				SerialNumber: "Namecoin TLS Certificate",
-			},
-			NotBefore: notBefore,
-			NotAfter:  notAfter,
-
-			// x509.KeyUsageKeyEncipherment is used for RSA key exchange,
-			// but not DHE/ECDHE key exchange.  Since everyone should be
-			// using ECDHE (due to forward secrecy), we disallow
-			// x509.KeyUsageKeyEncipherment in our template.
-			//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			KeyUsage:              x509.KeyUsageDigitalSignature,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-			BasicConstraintsValid: true,
-		}
-
-		//falseHosts := strings.Split(*falseHost, ",")
-		//for _, h := range falseHosts {
-		//	if ip := net.ParseIP(h); ip != nil {
-		//		falseTemplate.IPAddresses = append(falseTemplate.IPAddresses, ip)
-		//	} else {
-		//		falseTemplate.DNSNames = append(falseTemplate.DNSNames, h)
-		falseTemplate.DNSNames = append(falseTemplate.DNSNames, *falseHost)
-		//	}
-		//}
-
-		//if *isCA {
-		//	falseTemplate.IsCA = true
-		//	falseTemplate.KeyUsage |= x509.KeyUsageCertSign
-		//}
-
-		falseDerBytes, err := x509.CreateCertificate(rand.Reader, &falseTemplate, &template, publicKey(falsePriv), priv)
-		if err != nil {
-			log.Fatalf("Failed to create false certificate: %s", err)
-		}
-
-		falseCertOut, err := os.Create("falseCert.pem")
-		if err != nil {
-			log.Fatalf("failed to open falseCert.pem for writing: %s", err)
-		}
-		pem.Encode(falseCertOut, &pem.Block{Type: "CERTIFICATE", Bytes: falseDerBytes})
-		falseCertOut.Close()
-		log.Print("written falseCert.pem\n")
-
-		falseKeyOut, err := os.OpenFile("falseKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-		if err != nil {
-			log.Print("failed to open falseKey.pem for writing:", err)
-			return
-		}
-		pem.Encode(falseKeyOut, pemBlockForKey(falsePriv))
-		falseKeyOut.Close()
-		log.Print("written falseKey.pem\n")
+		doFalseHost(template, priv)
 	}
 }
