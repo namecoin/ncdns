@@ -1,3 +1,5 @@
+// nolint: gofmt
+
 // Copyright 2009 The Go Authors. All rights reserved.
 // Dehydrated certificate modifications Copyright 2015-2017 Jeremy Rand. All
 // rights reserved.
