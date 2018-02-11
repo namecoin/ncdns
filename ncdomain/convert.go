@@ -261,6 +261,11 @@ func (v *Value) appendTLSA(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, e
 		_, nameNoPort := util.SplitDomainTail(suffix)
 		_, nameNoPortOrProtocol := util.SplitDomainTail(nameNoPort)
 
+		if !strings.HasSuffix(nameNoPortOrProtocol, ".") {
+			continue
+		}
+		nameNoPortOrProtocol = strings.TrimSuffix(nameNoPortOrProtocol, ".")
+
 		derBytes, err := certdehydrate.FillRehydratedCertTemplate(template, nameNoPortOrProtocol)
 		if err != nil {
 			// TODO: add debug output here
