@@ -12,28 +12,35 @@ import (
 var log, Log = xlog.New("ncdns.certinject")
 
 var (
-	cryptoApiFlag = cflag.Bool(flagGroup, "cryptoapi", false, "Synchronize TLS certs to the CryptoAPI trust store?  This enables HTTPS to work with Chromium/Chrome.  Only use if you've set up NUMS HPKP in Chromium/Chrome as per documentation.  If you haven't set up NUMS HPKP, or if you access ncdns from browsers not based on Chromium or Firefox, this is unsafe and should not be used.")
+	cryptoApiFlag = cflag.Bool(flagGroup, "cryptoapi", false,
+		"Synchronize TLS certs to the CryptoAPI trust store?  This "+
+			"enables HTTPS to work with Chromium/Chrome.  Only "+
+			"use if you've set up NUMS HPKP in Chromium/Chrome "+
+			"as per documentation.  If you haven't set up NUMS "+
+			"HPKP, or if you access ncdns from browsers not "+
+			"based on Chromium or Firefox, this is unsafe and "+
+			"should not be used.")
 )
 
-// Injects the given cert into all configured trust stores.
+// InjectCert injects the given cert into all configured trust stores.
 func InjectCert(derBytes []byte) {
 
 	if cryptoApiFlag.Value() {
 		injectCertCryptoApi(derBytes)
 	}
 	if nssFlag.Value() {
-                injectCertNss(derBytes)
-        }
+		injectCertNss(derBytes)
+	}
 }
 
-// Cleans expired certs from all configured trust stores.
+// CleanCerts cleans expired certs from all configured trust stores.
 func CleanCerts() {
 
 	if cryptoApiFlag.Value() {
 		cleanCertsCryptoApi()
 	}
 	if nssFlag.Value() {
-                cleanCertsNss()
-        }
+		cleanCertsNss()
+	}
 
 }

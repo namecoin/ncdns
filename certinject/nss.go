@@ -10,8 +10,11 @@ import "math"
 import "time"
 import "gopkg.in/hlandau/easyconfig.v1/cflag"
 
-var certDir = cflag.String(flagGroup, "nsscertdir", "", "Directory to store certificate files.  Only use a directory that only ncdns can write to.  (Required if nss is set.)")
-var nssDir = cflag.String(flagGroup, "nssdbdir", "", "Directory that contains NSS's cert9.db.  (Required if nss is set.)")
+var certDir = cflag.String(flagGroup, "nsscertdir", "", "Directory to store "+
+	"certificate files.  Only use a directory that only ncdns can write "+
+	"to.  (Required if nss is set.)")
+var nssDir = cflag.String(flagGroup, "nssdbdir", "", "Directory that "+
+	"contains NSS's cert9.db.  (Required if nss is set.)")
 
 func injectCertNss(derBytes []byte) {
 
@@ -33,7 +36,8 @@ func injectCertNss(derBytes []byte) {
 	nickname := nicknameFromFingerprintHexNss(fingerprintHex)
 
 	// TODO: check whether we can replace CP with just P.
-	cmd := exec.Command(nssCertutilName, "-d", "sql:" + nssDir.Value(), "-A", "-t", "CP,,", "-n", nickname, "-a", "-i", path)
+	cmd := exec.Command(nssCertutilName, "-d", "sql:"+nssDir.Value(), "-A",
+		"-t", "CP,,", "-n", nickname, "-a", "-i", path)
 
 	err := cmd.Run()
 	if err != nil {
@@ -67,12 +71,15 @@ func cleanCertsNss() {
 
 			filename := f.Name()
 
-			fingerprintHex := strings.Replace(filename, ".pem", "", -1)
+			fingerprintHex := strings.Replace(filename, ".pem", "",
+				-1)
 
-			nickname := nicknameFromFingerprintHexNss(fingerprintHex)
+			nickname := nicknameFromFingerprintHexNss(
+				fingerprintHex)
 
 			// Delete the cert from NSS
-			cmd := exec.Command(nssCertutilName, "-d", "sql:" + nssDir.Value(), "-D", "-n", nickname)
+			cmd := exec.Command(nssCertutilName, "-d", "sql:"+
+				nssDir.Value(), "-D", "-n", nickname)
 
 			err := cmd.Run()
 			if err != nil {
@@ -81,6 +88,9 @@ func cleanCertsNss() {
 
 			// Also delete the cert from the filesystem
 			err = os.Remove(certDir.Value() + "/" + filename)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 
@@ -91,8 +101,10 @@ func checkCertExpiredNss(certFile os.FileInfo) (bool, error) {
 	// Get the last modified time
 	certFileModTime := certFile.ModTime()
 
-	// If the cert's last modified timestamp differs too much from the current time in either direction, consider it expired
-	expired := math.Abs( time.Since(certFileModTime).Seconds() ) > float64(certExpirePeriod.Value())
+	// If the cert's last modified timestamp differs too much from the
+	// current time in either direction, consider it expired
+	expired := math.Abs(time.Since(certFileModTime).Seconds()) >
+		float64(certExpirePeriod.Value())
 
 	return expired, nil
 

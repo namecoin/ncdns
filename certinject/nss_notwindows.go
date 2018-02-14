@@ -2,6 +2,6 @@
 
 package certinject
 
-var (
+const (
 	nssCertutilName = "certutil"
 )
