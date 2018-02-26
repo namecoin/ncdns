@@ -39,9 +39,15 @@ func injectCertNss(derBytes []byte) {
 	cmd := exec.Command(nssCertutilName, "-d", "sql:"+nssDir.Value(), "-A",
 		"-t", "CP,,", "-n", nickname, "-a", "-i", path)
 
-	err := cmd.Run()
+	stdoutStderr, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Fatal(err)
+		if strings.Contains(string(stdoutStderr), "SEC_ERROR_PKCS11_GENERAL_ERROR") {
+			log.Warn("Temporary SEC_ERROR_PKCS11_GENERAL_ERROR injecting certificate to NSS database; retrying in 1ms...")
+			time.Sleep(1 * time.Millisecond)
+			injectCertNss(derBytes)
+		} else {
+			log.Errorf("Error injecting cert to NSS database: %s\n%s", err, stdoutStderr)
+		}
 	}
 
 }
@@ -55,7 +61,10 @@ func cleanCertsNss() {
 		log.Fatal("Empty nssdbdir configuration.")
 	}
 
-	certFiles, _ := ioutil.ReadDir(certDir.Value() + "/")
+	certFiles, err := ioutil.ReadDir(certDir.Value() + "/")
+	if err != nil {
+		log.Fatalf("Error enumerating files in cert directory: %s", err)
+	}
 
 	// for all Namecoin certs in the folder
 	for _, f := range certFiles {
@@ -63,7 +72,7 @@ func cleanCertsNss() {
 		// Check if the cert is expired
 		expired, err := checkCertExpiredNss(f)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Error checking if NSS cert is expired: %s", err)
 		}
 
 		// delete the cert if it's expired
@@ -81,15 +90,23 @@ func cleanCertsNss() {
 			cmd := exec.Command(nssCertutilName, "-d", "sql:"+
 				nssDir.Value(), "-D", "-n", nickname)
 
-			err := cmd.Run()
+			stdoutStderr, err := cmd.CombinedOutput()
 			if err != nil {
-				log.Fatal(err)
+				if strings.Contains(string(stdoutStderr), "SEC_ERROR_UNRECOGNIZED_OID") {
+					log.Warn("Tried to delete certificate from NSS database, but the certificate was already not present in NSS database")
+				} else if strings.Contains(string(stdoutStderr), "SEC_ERROR_PKCS11_GENERAL_ERROR") {
+					log.Warn("Temporary SEC_ERROR_PKCS11_GENERAL_ERROR deleting certificate from NSS database; retrying in 1ms...")
+					time.Sleep(1 * time.Millisecond)
+					cleanCertsNss()
+				} else {
+					log.Fatalf("Error deleting cert from NSS database: %s\n%s", err, stdoutStderr)
+				}
 			}
 
 			// Also delete the cert from the filesystem
 			err = os.Remove(certDir.Value() + "/" + filename)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("Error deleting NSS cert from filesystem: %s", err)
 			}
 		}
 	}
@@ -101,10 +118,14 @@ func checkCertExpiredNss(certFile os.FileInfo) (bool, error) {
 	// Get the last modified time
 	certFileModTime := certFile.ModTime()
 
+	age := time.Since(certFileModTime)
+	ageSeconds := age.Seconds()
+
 	// If the cert's last modified timestamp differs too much from the
 	// current time in either direction, consider it expired
-	expired := math.Abs(time.Since(certFileModTime).Seconds()) >
-		float64(certExpirePeriod.Value())
+	expired := math.Abs(ageSeconds) > float64(certExpirePeriod.Value())
+
+	log.Debugf("Age of certificate: %s = %f seconds; expired = %t", age, ageSeconds, expired)
 
 	return expired, nil
 
