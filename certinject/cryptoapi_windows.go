@@ -4,10 +4,11 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"golang.org/x/sys/windows/registry"
 	"math"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/windows/registry"
 )
 
 // In 64-bit Windows, this key is shared between 64-bit and 32-bit applications.
