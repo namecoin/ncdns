@@ -32,11 +32,7 @@ func (s *Server) initTemplates() error {
 	}
 
 	lookupPageTpl, err = deriveTemplate(s.tplFilename("lookup"))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 func deriveTemplate(filename string) (*template.Template, error) {
