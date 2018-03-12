@@ -41,7 +41,7 @@ type Config struct {
 
 	NamecoinRPCUsername   string `default:"" usage:"Namecoin RPC username"`
 	NamecoinRPCPassword   string `default:"" usage:"Namecoin RPC password"`
-	NamecoinRPCAddress    string `default:"localhost:8336" usage:"Namecoin RPC server address"`
+	NamecoinRPCAddress    string `default:"127.0.0.1:8336" usage:"Namecoin RPC server address"`
 	NamecoinRPCCookiePath string `default:"" usage:"Namecoin RPC cookie path (if set, used instead of password)"`
 	CacheMaxEntries       int    `default:"100" usage:"Maximum name cache entries"`
 	SelfName              string `default:"" usage:"The FQDN of this nameserver. If empty, a psuedo-hostname is generated."`
