@@ -1,28 +1,51 @@
-// Copyright 2009 The Go Authors, 2015-2016 Jeremy Rand. All rights reserved.
+// Copyright 2009 The Go Authors. All rights reserved.
+// Modifications Copyright 2015-2018 Jeremy Rand. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 // This code is modified from the stock CreateCertificate to use a
 // pre-existing signature.
 
-// Last rebased on Go 1.6.2
+// Last rebased on Go 1.9
+// Remove all content between "import" and "CreateCertificate" in original.
+// Remove all content after "CreateCertificate" in original.
 //go:generate bash install.sh
 
 // Package x509 parses X.509-encoded keys and certificates.
+//
+// On UNIX systems the environment variables SSL_CERT_FILE and SSL_CERT_DIR
+// can be used to override the system default locations for the SSL certificate
+// file and SSL certificate files directory, respectively.
 package x509
 
 import (
+	"bytes"
+	//"crypto"
+	//"crypto/dsa"
+	//"crypto/ecdsa"
+	//"crypto/elliptic"
+	//"crypto/rsa"
 	_ "crypto/sha1"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
+	//"crypto/x509/pkix"
 	"encoding/asn1"
+	//"encoding/pem"
+	"errors"
+	//"fmt"
+	//"io"
+	//"math/big"
+	//"net"
+	//"strconv"
+	//"time"
 )
 
-// CreateCertificate creates a new certificate based on a template. The
-// following members of template are used: SerialNumber, Subject, NotBefore,
-// NotAfter, KeyUsage, ExtKeyUsage, UnknownExtKeyUsage, BasicConstraintsValid,
-// IsCA, MaxPathLen, SubjectKeyId, DNSNames, PermittedDNSDomainsCritical,
-// PermittedDNSDomains, SignatureAlgorithm.
+// CreateCertificate creates a new certificate based on a template.
+// The following members of template are used: AuthorityKeyId,
+// BasicConstraintsValid, DNSNames, ExcludedDNSDomains, ExtKeyUsage,
+// IsCA, KeyUsage, MaxPathLen, MaxPathLenZero, NotAfter, NotBefore,
+// PermittedDNSDomains, PermittedDNSDomainsCritical, SerialNumber,
+// SignatureAlgorithm, Subject, SubjectKeyId, and UnknownExtKeyUsage.
 //
 // The certificate is signed by parent. If parent is equal to template then the
 // certificate is self-signed. The parameter pub is the public key of the
@@ -32,14 +55,20 @@ import (
 //
 // All keys types that are implemented via crypto.Signer are supported (This
 // includes *rsa.PublicKey and *ecdsa.PublicKey.)
-
+//
+// The AuthorityKeyId will be taken from the SubjectKeyId of parent, if any,
+// unless the resulting certificate is self-signed. Otherwise the value from
+// template will be used.
 //func CreateCertificate(rand io.Reader, template, parent *Certificate, pub, priv interface{}) (cert []byte, err error) {
 func CreateCertificateWithSplicedSignature(template, parent *Certificate) (cert []byte, err error) {
-
 	//key, ok := priv.(crypto.Signer)
 	//if !ok {
 	//	return nil, errors.New("x509: certificate private key does not implement crypto.Signer")
 	//}
+
+	if template.SerialNumber == nil {
+		return nil, errors.New("x509: no SerialNumber given")
+	}
 
 	//hashFunc, signatureAlgorithm, err := signingParamsForPublicKey(key.Public(), template.SignatureAlgorithm)
 	//if err != nil {
@@ -60,21 +89,22 @@ func CreateCertificateWithSplicedSignature(template, parent *Certificate) (cert 
 		return nil, err
 	}
 
-	if len(parent.SubjectKeyId) > 0 {
-		template.AuthorityKeyId = parent.SubjectKeyId
-	}
-
-	extensions, err := buildExtensions(template)
-	if err != nil {
-		return
-	}
-
 	asn1Issuer, err := subjectBytes(parent)
 	if err != nil {
 		return
 	}
 
 	asn1Subject, err := subjectBytes(template)
+	if err != nil {
+		return
+	}
+
+	authorityKeyId := template.AuthorityKeyId
+	if !bytes.Equal(asn1Issuer, asn1Subject) && len(parent.SubjectKeyId) > 0 {
+		authorityKeyId = parent.SubjectKeyId
+	}
+
+	extensions, err := buildExtensions(template, authorityKeyId)
 	if err != nil {
 		return
 	}
@@ -102,8 +132,17 @@ func CreateCertificateWithSplicedSignature(template, parent *Certificate) (cert 
 	//h.Write(tbsCertContents)
 	//digest := h.Sum(nil)
 
+	//var signerOpts crypto.SignerOpts
+	//signerOpts = hashFunc
+	//if template.SignatureAlgorithm != 0 && template.SignatureAlgorithm.isRSAPSS() {
+	//	signerOpts = &rsa.PSSOptions{
+	//		SaltLength: rsa.PSSSaltLengthEqualsHash,
+	//		Hash:       hashFunc,
+	//	}
+	//}
+
 	//var signature []byte
-	//signature, err = key.Sign(rand, digest, hashFunc)
+	//signature, err = key.Sign(rand, digest, signerOpts)
 	//if err != nil {
 	//	return
 	//}
