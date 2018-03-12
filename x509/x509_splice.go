@@ -6,7 +6,7 @@
 // This code is modified from the stock CreateCertificate to use a
 // pre-existing signature.
 
-// Last rebased on Go 1.9
+// Last rebased on Go 1.10
 // Remove all content between "import" and "CreateCertificate" in original.
 // Remove all content after "CreateCertificate" in original.
 //go:generate bash install.sh
@@ -36,11 +36,17 @@ import (
 	//"io"
 	//"math/big"
 	//"net"
+	//"net/url"
 	//"strconv"
+	//"strings"
 	//"time"
+	//"unicode/utf8"
+
+	//"golang_org/x/crypto/cryptobyte"
+	//cryptobyte_asn1 "golang_org/x/crypto/cryptobyte/asn1"
 )
 
-// CreateCertificate creates a new certificate based on a template.
+// CreateCertificate creates a new X.509v3 certificate based on a template.
 // The following members of template are used: AuthorityKeyId,
 // BasicConstraintsValid, DNSNames, ExcludedDNSDomains, ExtKeyUsage,
 // IsCA, KeyUsage, MaxPathLen, MaxPathLenZero, NotAfter, NotBefore,
@@ -104,7 +110,7 @@ func CreateCertificateWithSplicedSignature(template, parent *Certificate) (cert 
 		authorityKeyId = parent.SubjectKeyId
 	}
 
-	extensions, err := buildExtensions(template, authorityKeyId)
+	extensions, err := buildExtensions(template, bytes.Equal(asn1Subject, emptyASN1Subject), authorityKeyId)
 	if err != nil {
 		return
 	}
