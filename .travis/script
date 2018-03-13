@@ -48,6 +48,8 @@ STATICRESULT1=$?
 echo ""
 echo "gometalinter non-critical (warnings expected):"
 gometalinter.v1 --enable-all \
+--disable=aligncheck \
+--disable=test \
 --concurrency=3 \
 --deadline=10m \
 --exclude='^x509/([a-wy-z]|x509.go|x509_[a-rt-z])' \
