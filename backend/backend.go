@@ -36,14 +36,14 @@ type Config struct {
 	CacheMaxEntries int
 
 	// Nameservers to advertise at zone apex. The first is considered the primary.
-	// If empty, a psuedo-hostname resolvable to SelfIP is used.
+	// If empty, a pseudo-hostname resolvable to SelfIP is used.
 	CanonicalNameservers []string
 
 	// Vanity IPs to place at the zone apex.
 	VanityIPs []net.IP
 
 	// Used only if CanonicalNameservers is left blank. An IP which the internal
-	// psuedo-hostname should resolve to. This should be the public IP of the
+	// pseudo-hostname should resolve to. This should be the public IP of the
 	// nameserver serving the zone expressed by this backend.
 	SelfIP string
 
