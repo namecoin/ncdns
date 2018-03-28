@@ -3,6 +3,7 @@ package main
 import "gopkg.in/alecthomas/kingpin.v2"
 import "github.com/namecoin/ncdns/ncdomain"
 import "github.com/namecoin/ncdns/namecoin"
+import "github.com/namecoin/ncdns/tlsoverridefirefox"
 import "github.com/namecoin/ncdns/util"
 import "github.com/hlandau/xlog"
 import "strings"
@@ -14,6 +15,9 @@ var (
 	rpchostFlag = kingpin.Flag("rpchost", "Namecoin RPC host:port").Default("127.0.0.1:8336").String()
 	rpcuserFlag = kingpin.Flag("rpcuser", "Namecoin RPC username").String()
 	rpcpassFlag = kingpin.Flag("rpcpass", "Namecoin RPC password").String()
+	formatFlag  = kingpin.Flag("format", "Output format.  \"zonefile\" = "+
+		"DNS zone file.  \"firefox-override\" = Firefox "+
+		"cert_override.txt format.").Default("zonefile").String()
 )
 
 var conn namecoin.Conn
@@ -79,7 +83,15 @@ func main() {
 			log.Warne(err, "error generating RRs")
 
 			for _, rr := range rrs {
-				fmt.Print(rr.String(), "\n")
+				if *formatFlag == "zonefile" {
+					fmt.Print(rr.String(), "\n")
+				} else if *formatFlag == "firefox-override" {
+					result, err := tlsoverridefirefox.OverrideFromRR(rr)
+					if err != nil {
+						panic(err)
+					}
+					fmt.Print(result)
+				}
 			}
 		}
 
