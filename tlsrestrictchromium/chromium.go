@@ -6,8 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/miekg/dns"
 	"math/big"
+
+	"github.com/miekg/dns"
 )
 
 // DNSHash converts an FQDN to DNS wire format, takes the SHA256 of it, and
