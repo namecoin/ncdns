@@ -28,7 +28,6 @@ gometalinter.v2 --enable-all \
 --disable=errcheck \
 --disable=gas \
 --disable=gocyclo \
---disable=goimports \
 --disable=golint \
 --disable=ineffassign \
 --disable=lll \
