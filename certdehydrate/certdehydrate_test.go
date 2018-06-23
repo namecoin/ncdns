@@ -2,10 +2,11 @@ package certdehydrate_test
 
 import (
 	"encoding/json"
-	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/ncdns/x509"
 	"reflect"
 	"testing"
+
+	"github.com/namecoin/ncdns/certdehydrate"
+	"github.com/namecoin/ncdns/x509"
 )
 
 func TestDehydratedCertIdentityOperation(t *testing.T) {
