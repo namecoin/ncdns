@@ -30,14 +30,15 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/ncdns/x509"
 	"log"
 	"math/big"
 	//"net"
 	"os"
 	//"strings"
 	"time"
+
+	"github.com/namecoin/ncdns/certdehydrate"
+	"github.com/namecoin/ncdns/x509"
 )
 
 var (
