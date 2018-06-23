@@ -1071,8 +1071,6 @@ func parseSingleMX(rv map[string]interface{}, s interface{}, v *Value, errFunc E
 		Preference: uint16(prio),
 		Mx:         hostname,
 	})
-
-	return
 }
 
 func parseSRV(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
