@@ -8,6 +8,7 @@ import "github.com/hlandau/xlog"
 import "strings"
 import "fmt"
 
+import "github.com/miekg/dns"
 import "gopkg.in/hlandau/easyconfig.v1"
 import "gopkg.in/hlandau/easyconfig.v1/cflag"
 
@@ -30,6 +31,18 @@ var config = easyconfig.Configurator{
 }
 
 const perCall = 1000
+
+func printRR(rr dns.RR) {
+	if formatFlag.Value() == "zonefile" {
+		fmt.Print(rr.String(), "\n")
+	} else if formatFlag.Value() == "firefox-override" {
+		result, err := tlsoverridefirefox.OverrideFromRR(rr)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Print(result)
+	}
+}
 
 func main() {
 	err := config.Parse(nil)
@@ -97,15 +110,7 @@ func main() {
 			log.Warne(err, "error generating RRs")
 
 			for _, rr := range rrs {
-				if formatFlag.Value() == "zonefile" {
-					fmt.Print(rr.String(), "\n")
-				} else if formatFlag.Value() == "firefox-override" {
-					result, err := tlsoverridefirefox.OverrideFromRR(rr)
-					if err != nil {
-						panic(err)
-					}
-					fmt.Print(result)
-				}
+				printRR(rr)
 			}
 		}
 
