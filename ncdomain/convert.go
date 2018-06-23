@@ -1015,8 +1015,6 @@ func parseTXT(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 			v.TXT[i] = v.TXT[i][0 : len(v.TXT[i])-1]
 		}
 	}
-
-	return
 }
 
 func segmentizeTXT(txt string) (a []string) {
