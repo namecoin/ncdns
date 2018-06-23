@@ -33,6 +33,7 @@ gometalinter.v2 --enable-all \
 --disable=ineffassign \
 --disable=lll \
 --disable=maligned \
+--disable=megacheck \
 --disable=nakedret \
 --disable=staticcheck \
 --disable=test \
