@@ -33,6 +33,7 @@ gometalinter.v2 --enable-all \
 --disable=golint \
 --disable=ineffassign \
 --disable=lll \
+--disable=nakedret \
 --disable=staticcheck \
 --disable=test \
 --disable=unconvert \
