@@ -1140,8 +1140,6 @@ func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, er
 		Port:     uint16(port),
 		Target:   hostname,
 	})
-
-	return
 }
 
 func convServiceValue(x interface{}) (string, error) {
