@@ -1,6 +1,6 @@
 #!/bin/bash
 
-travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v1 github.com/miekg/exdns/q github.com/namecoin/dns-prop279
+travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v2 github.com/miekg/exdns/q github.com/namecoin/dns-prop279
 
 go test -v ./...
 RESULT=$?
@@ -12,7 +12,7 @@ fi
 
 # Static analysis
 
-gometalinter.v1 --install
+gometalinter.v2 --install
 
 # aligncheck is disabled because of these comments:
 # * https://www.reddit.com/r/golang/comments/3lahav/aligncheck_helps_to_find_inefficiently_packed/cv4u4lg/
@@ -22,7 +22,7 @@ gometalinter.v1 --install
 # verbatim from the Go standard library.
 echo ""
 echo "gometalinter critical (should be no warnings):"
-gometalinter.v1 --enable-all \
+gometalinter.v2 --enable-all \
 --disable=aligncheck \
 --disable=deadcode \
 --disable=dupl \
@@ -46,7 +46,7 @@ STATICRESULT1=$?
 
 echo ""
 echo "gometalinter non-critical (warnings expected):"
-gometalinter.v1 --enable-all \
+gometalinter.v2 --enable-all \
 --disable=aligncheck \
 --disable=test \
 --concurrency=3 \
