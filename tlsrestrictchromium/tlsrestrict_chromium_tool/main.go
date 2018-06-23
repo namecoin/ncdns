@@ -2,11 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"log"
+
 	"github.com/namecoin/ncdns/tlsrestrictchromium"
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
-	"io/ioutil"
-	"log"
 )
 
 var (
