@@ -1,6 +1,5 @@
 package main
 
-import "gopkg.in/alecthomas/kingpin.v2"
 import "github.com/namecoin/ncdns/ncdomain"
 import "github.com/namecoin/ncdns/namecoin"
 import "github.com/namecoin/ncdns/tlsoverridefirefox"
@@ -9,27 +8,42 @@ import "github.com/hlandau/xlog"
 import "strings"
 import "fmt"
 
+import "gopkg.in/hlandau/easyconfig.v1"
+import "gopkg.in/hlandau/easyconfig.v1/cflag"
+
 var log, Log = xlog.New("ncdumpzone")
 
 var (
-	rpchostFlag = kingpin.Flag("rpchost", "Namecoin RPC host:port").Default("127.0.0.1:8336").String()
-	rpcuserFlag = kingpin.Flag("rpcuser", "Namecoin RPC username").String()
-	rpcpassFlag = kingpin.Flag("rpcpass", "Namecoin RPC password").String()
-	formatFlag  = kingpin.Flag("format", "Output format.  \"zonefile\" = "+
+	flagGroup   = cflag.NewGroup(nil, "ncdumpzone")
+	rpchostFlag = cflag.String(flagGroup, "namecoinrpcaddress", "127.0.0.1:8336", "Namecoin RPC host:port")
+	rpcuserFlag = cflag.String(flagGroup, "namecoinrpcusername", "", "Namecoin RPC username")
+	rpcpassFlag = cflag.String(flagGroup, "namecoinrpcpassword", "", "Namecoin RPC password")
+	formatFlag  = cflag.String(flagGroup, "format", "zonefile", "Output format.  \"zonefile\" = "+
 		"DNS zone file.  \"firefox-override\" = Firefox "+
-		"cert_override.txt format.").Default("zonefile").String()
+		"cert_override.txt format.")
 )
 
 var conn namecoin.Conn
 
+var config = easyconfig.Configurator{
+	ProgramName: "ncdumpzone",
+}
+
 const perCall = 1000
 
 func main() {
-	kingpin.Parse()
+	err := config.Parse(nil)
+	if err != nil {
+		log.Fatalf("Couldn't parse configuration: %s", err)
+	}
 
-	conn.Server = *rpchostFlag
-	conn.Username = *rpcuserFlag
-	conn.Password = *rpcpassFlag
+	conn.Server = rpchostFlag.Value()
+	conn.Username = rpcuserFlag.Value()
+	conn.Password = rpcpassFlag.Value()
+
+	if formatFlag.Value() != "zonefile" && formatFlag.Value() != "firefox-override" {
+		log.Fatalf("Invalid \"format\" argument: %s", formatFlag.Value())
+	}
 
 	var errors []error
 	errFunc := func(err error, isWarning bool) {
@@ -83,9 +97,9 @@ func main() {
 			log.Warne(err, "error generating RRs")
 
 			for _, rr := range rrs {
-				if *formatFlag == "zonefile" {
+				if formatFlag.Value() == "zonefile" {
 					fmt.Print(rr.String(), "\n")
-				} else if *formatFlag == "firefox-override" {
+				} else if formatFlag.Value() == "firefox-override" {
 					result, err := tlsoverridefirefox.OverrideFromRR(rr)
 					if err != nil {
 						panic(err)
