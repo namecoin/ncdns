@@ -1,8 +1,11 @@
 package certinject
 
 import (
+	"github.com/hlandau/xlog"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 )
+
+var log, Log = xlog.New("ncdns.certinject")
 
 var (
 	flagGroup        = cflag.NewGroup(nil, "certstore")

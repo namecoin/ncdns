@@ -1015,8 +1015,6 @@ func parseTXT(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 			v.TXT[i] = v.TXT[i][0 : len(v.TXT[i])-1]
 		}
 	}
-
-	return
 }
 
 func segmentizeTXT(txt string) (a []string) {
@@ -1073,8 +1071,6 @@ func parseSingleMX(rv map[string]interface{}, s interface{}, v *Value, errFunc E
 		Preference: uint16(prio),
 		Mx:         hostname,
 	})
-
-	return
 }
 
 func parseSRV(rv map[string]interface{}, v *Value, errFunc ErrorFunc, relname string) {
@@ -1144,8 +1140,6 @@ func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, er
 		Port:     uint16(port),
 		Target:   hostname,
 	})
-
-	return
 }
 
 func convServiceValue(x interface{}) (string, error) {

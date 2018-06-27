@@ -3,17 +3,18 @@ package server
 import (
 	"crypto"
 	"fmt"
+	"net"
+	"os"
+	"path/filepath"
+	"strings"
+	"sync"
+
 	"github.com/hlandau/buildinfo"
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
 	"github.com/namecoin/ncdns/backend"
 	"github.com/namecoin/ncdns/namecoin"
 	"gopkg.in/hlandau/madns.v1"
-	"net"
-	"os"
-	"path/filepath"
-	"strings"
-	"sync"
 )
 
 var log, Log = xlog.New("ncdns.server")

@@ -1,11 +1,12 @@
 package main
 
 import (
+	"path/filepath"
+
 	"github.com/hlandau/dexlogconfig"
 	"github.com/namecoin/ncdns/server"
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/service.v2"
-	"path/filepath"
 )
 
 func main() {

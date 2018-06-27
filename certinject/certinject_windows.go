@@ -1,15 +1,12 @@
 package certinject
 
 import (
-	"github.com/hlandau/xlog"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 )
 
 // This package is used to add and remove certificates to the system trust
 // store.
 // Currently only supports Windows CryptoAPI and NSS sqlite3 stores.
-
-var log, Log = xlog.New("ncdns.certinject")
 
 var (
 	cryptoApiFlag = cflag.Bool(flagGroup, "cryptoapi", false,
