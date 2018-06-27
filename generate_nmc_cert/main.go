@@ -1,12 +1,20 @@
-// Copyright 2009 The Go Authors, 2015-2016 Jeremy Rand. All rights reserved.
+// nolint: gofmt, goimports
+
+// Copyright 2009 The Go Authors. All rights reserved.
+// Dehydrated certificate modifications Copyright 2015-2017 Jeremy Rand. All
+// rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+
 
 // Generate a self-signed X.509 certificate for a TLS server. Outputs to
 // 'cert.pem' and 'key.pem' and will overwrite existing files.
 
 // This code has been modified from the stock Go code to generate
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
+
+// Last rebased against Go 1.8.3.
+// Future rebases need to rebase both the main flow and the falseHost flow.
 
 package main
 
@@ -22,19 +30,26 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/ncdns/x509"
 	"log"
 	"math/big"
+	//"net"
 	"os"
+	//"strings"
 	"time"
+
+	"github.com/namecoin/ncdns/certdehydrate"
+	"github.com/namecoin/ncdns/x509"
 )
 
 var (
+	//host       = flag.String("host", "", "Comma-separated hostnames and IPs to generate a certificate for")
 	host       = flag.String("host", "", "Hostname to generate a certificate for (only use one)")
 	validFrom  = flag.String("start-date", "", "Creation date formatted as Jan 1 15:04:05 2011")
-	validTo    = flag.String("end-date", "", "End date formatted as Jan 1 15:04:05 2011")
-	ecdsaCurve = flag.String("ecdsa-curve", "", "ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521")
+	validFor   = flag.Duration("duration", 365*24*time.Hour, "Duration that certificate is valid for")
+	//isCA       = flag.Bool("ca", false, "whether this cert should be its own Certificate Authority")
+	//rsaBits    = flag.Int("rsa-bits", 2048, "Size of RSA key to generate. Ignored if --ecdsa-curve is set")
+	//ecdsaCurve = flag.String("ecdsa-curve", "", "ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521")
+	ecdsaCurve = flag.String("ecdsa-curve", "P256", "ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521")
 	falseHost  = flag.String("false-host", "", "(Optional) Generate a false cert for this host; used to test x.509 implementations for safety regarding handling of the CA flag and KeyUsage")
 )
 
@@ -71,19 +86,13 @@ func main() {
 	if len(*host) == 0 {
 		log.Fatalf("Missing required --host parameter")
 	}
-	if len(*validFrom) == 0 {
-		log.Fatalf("Missing required --start-date parameter")
-	}
-	if len(*validTo) == 0 {
-		log.Fatalf("Missing required --end-date parameter")
-	}
-	if len(*ecdsaCurve) == 0 {
-		log.Fatalf("Missing required --ecdsa-curve parameter")
-	}
 
 	var priv interface{}
 	var err error
 	switch *ecdsaCurve {
+	case "":
+		//priv, err = rsa.GenerateKey(rand.Reader, *rsaBits)
+		log.Fatalf("Missing required --ecdsa-curve parameter")
 	case "P224":
 		priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
 	case "P256":
@@ -101,24 +110,25 @@ func main() {
 	}
 
 	var notBefore time.Time
-	notBefore, err = time.Parse("Jan 2 15:04:05 2006", *validFrom)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse creation date: %s\n", err)
-		os.Exit(1)
+	if len(*validFrom) == 0 {
+		notBefore = time.Now()
+	} else {
+		notBefore, err = time.Parse("Jan 2 15:04:05 2006", *validFrom)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to parse creation date: %s\n", err)
+			os.Exit(1)
+		}
 	}
 
-	var notAfter time.Time
-	notAfter, err = time.Parse("Jan 2 15:04:05 2006", *validTo)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse expiry date: %s\n", err)
-		os.Exit(1)
-	}
+	notAfter := notBefore.Add(*validFor)
 
 	timestampPrecision := int64(5 * 60)
 
 	notBeforeFloored := time.Unix((notBefore.Unix()/timestampPrecision)*timestampPrecision, 0)
 	notAfterFloored := time.Unix((notAfter.Unix()/timestampPrecision)*timestampPrecision, 0)
 
+	//serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	//serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	// Serial components
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
 	if err != nil {
@@ -137,27 +147,46 @@ func main() {
 	serialNumber := big.NewInt(1)
 	serialNumberBytes, err := serialDehydrated.SerialNumber(*host)
 	if err != nil {
-		log.Fatalf("Error calculating serial number: %s", err)
+		log.Fatalf("failed to generate serial number: %s", err)
 	}
 	serialNumber.SetBytes(serialNumberBytes)
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
+			//Organization: []string{"Acme Co"},
 			CommonName:   *host,
 			SerialNumber: "Namecoin TLS Certificate",
 		},
+		//NotBefore: notBefore,
 		NotBefore: notBeforeFloored,
+		//NotAfter:  notAfter,
 		NotAfter:  notAfterFloored,
 
-		// x509.KeyUsageKeyEncipherment is used for RSA key exchange, but not DHE/ECDHE key exchange.  Since everyone should be using ECDHE (due to forward secrecy), we disallow x509.KeyUsageKeyEncipherment in our template.
+		// x509.KeyUsageKeyEncipherment is used for RSA key exchange,
+		// but not DHE/ECDHE key exchange.  Since everyone should be
+		// using ECDHE (due to forward secrecy), we disallow
+		// x509.KeyUsageKeyEncipherment in our template.
 		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
 		KeyUsage:              x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
 
+	//hosts := strings.Split(*host, ",")
+	//for _, h := range hosts {
+	//	if ip := net.ParseIP(h); ip != nil {
+	//		template.IPAddresses = append(template.IPAddresses, ip)
+	//	} else {
+	//		template.DNSNames = append(template.DNSNames, h)
 	template.DNSNames = append(template.DNSNames, *host)
+	//	}
+	//}
+
+	//if *isCA {
+	//	template.IsCA = true
+	//	template.KeyUsage |= x509.KeyUsageCertSign
+	//}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
 	if err != nil {
@@ -210,65 +239,6 @@ func main() {
 	log.Print("SUCCESS: The cert rehydrated to an identical form.  Place the generated files in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
 
 	if len(*falseHost) > 0 {
-		var falsePriv interface{}
-
-		switch *ecdsaCurve {
-		case "P224":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
-		case "P256":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		case "P384":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-		case "P521":
-			falsePriv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
-		default:
-			fmt.Fprintf(os.Stderr, "Unrecognized elliptic curve: %q", *ecdsaCurve)
-			os.Exit(1)
-		}
-		if err != nil {
-			log.Fatalf("failed to generate false private key: %s", err)
-		}
-
-		falseSerialNumber := big.NewInt(2)
-
-		falseTemplate := x509.Certificate{
-			SerialNumber: falseSerialNumber,
-			Subject: pkix.Name{
-				CommonName:   *falseHost,
-				SerialNumber: "Namecoin TLS Certificate",
-			},
-			NotBefore: notBefore,
-			NotAfter:  notAfter,
-
-			// x509.KeyUsageKeyEncipherment is used for RSA key exchange, but not DHE/ECDHE key exchange.  Since everyone should be using ECDHE (due to forward secrecy), we disallow x509.KeyUsageKeyEncipherment in our template.
-			//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-			KeyUsage:              x509.KeyUsageDigitalSignature,
-			ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-			BasicConstraintsValid: true,
-		}
-
-		falseTemplate.DNSNames = append(falseTemplate.DNSNames, *falseHost)
-
-		falseDerBytes, err := x509.CreateCertificate(rand.Reader, &falseTemplate, &template, publicKey(falsePriv), priv)
-		if err != nil {
-			log.Fatalf("Failed to create false certificate: %s", err)
-		}
-
-		falseCertOut, err := os.Create("falseCert.pem")
-		if err != nil {
-			log.Fatalf("failed to open falseCert.pem for writing: %s", err)
-		}
-		pem.Encode(falseCertOut, &pem.Block{Type: "CERTIFICATE", Bytes: falseDerBytes})
-		falseCertOut.Close()
-		log.Print("written falseCert.pem\n")
-
-		falseKeyOut, err := os.OpenFile("falseKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-		if err != nil {
-			log.Print("failed to open falseKey.pem for writing:", err)
-			return
-		}
-		pem.Encode(falseKeyOut, pemBlockForKey(falsePriv))
-		falseKeyOut.Close()
-		log.Print("written falseKey.pem\n")
+		doFalseHost(template, priv)
 	}
 }
