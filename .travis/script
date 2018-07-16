@@ -27,6 +27,7 @@ gometalinter.v2 --enable-all \
 --disable=dupl \
 --disable=errcheck \
 --disable=gas \
+--disable=gochecknoglobals \
 --disable=gocyclo \
 --disable=goimports \
 --disable=golint \
