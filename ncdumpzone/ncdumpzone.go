@@ -1,61 +1,54 @@
-package main
+package ncdumpzone
 
-import "github.com/namecoin/ncdns/ncdomain"
-import "github.com/namecoin/ncdns/namecoin"
-import "github.com/namecoin/ncdns/tlsoverridefirefox"
-import "github.com/namecoin/ncdns/util"
-import "github.com/hlandau/xlog"
-import "strings"
-import "fmt"
+import (
+	"fmt"
+	"io"
+	"strings"
 
-import "github.com/miekg/dns"
-import "gopkg.in/hlandau/easyconfig.v1"
-import "gopkg.in/hlandau/easyconfig.v1/cflag"
+	"github.com/hlandau/xlog"
+	"github.com/miekg/dns"
+
+	extratypes "github.com/hlandau/ncbtcjsontypes"
+	"github.com/namecoin/ncdns/namecoin"
+	"github.com/namecoin/ncdns/ncdomain"
+	"github.com/namecoin/ncdns/tlsoverridefirefox"
+	"github.com/namecoin/ncdns/util"
+)
 
 var log, Log = xlog.New("ncdumpzone")
 
-var (
-	flagGroup   = cflag.NewGroup(nil, "ncdumpzone")
-	rpchostFlag = cflag.String(flagGroup, "namecoinrpcaddress", "127.0.0.1:8336", "Namecoin RPC host:port")
-	rpcuserFlag = cflag.String(flagGroup, "namecoinrpcusername", "", "Namecoin RPC username")
-	rpcpassFlag = cflag.String(flagGroup, "namecoinrpcpassword", "", "Namecoin RPC password")
-	formatFlag  = cflag.String(flagGroup, "format", "zonefile", "Output format.  \"zonefile\" = "+
-		"DNS zone file.  \"firefox-override\" = Firefox "+
-		"cert_override.txt format.")
-)
-
-var conn namecoin.Conn
-
-var config = easyconfig.Configurator{
-	ProgramName: "ncdumpzone",
-}
-
 const perCall = 1000
 
-func printRR(rr dns.RR) {
-	if formatFlag.Value() == "zonefile" {
-		fmt.Print(rr.String(), "\n")
-	} else if formatFlag.Value() == "firefox-override" {
+func dumpRR(rr dns.RR, dest io.Writer, format string) error {
+	switch format {
+	case "zonefile":
+		fmt.Fprint(dest, rr.String(), "\n")
+	case "firefox-override":
 		result, err := tlsoverridefirefox.OverrideFromRR(rr)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		fmt.Print(result)
+		fmt.Fprint(dest, result)
 	}
+
+	return nil
 }
 
-func main() {
-	err := config.Parse(nil)
-	if err != nil {
-		log.Fatalf("Couldn't parse configuration: %s", err)
+func dumpName(item *extratypes.NameFilterItem, conn namecoin.Conn,
+	dest io.Writer, format string) error {
+	// The order in which name_scan returns results is seemingly rather
+	// random, so we can't stop when we see a non-d/ name, so just skip it.
+	if !strings.HasPrefix(item.Name, "d/") {
+		return nil
 	}
 
-	conn.Server = rpchostFlag.Value()
-	conn.Username = rpcuserFlag.Value()
-	conn.Password = rpcpassFlag.Value()
+	suffix, err := util.NamecoinKeyToBasename(item.Name)
+	if err != nil {
+		return nil
+	}
 
-	if formatFlag.Value() != "zonefile" && formatFlag.Value() != "firefox-override" {
-		log.Fatalf("Invalid \"format\" argument: %s", formatFlag.Value())
+	getNameFunc := func(k string) (string, error) {
+		return conn.Query(k)
 	}
 
 	var errors []error
@@ -63,8 +56,29 @@ func main() {
 		errors = append(errors, err)
 	}
 
-	getNameFunc := func(k string) (string, error) {
-		return conn.Query(k)
+	value := ncdomain.ParseValue(item.Name, item.Value, getNameFunc, errFunc)
+	if len(errors) > 0 {
+		return nil
+	}
+
+	rrs, err := value.RRsRecursive(nil, suffix+".bit.", "bit.")
+	log.Warne(err, "error generating RRs")
+
+	for _, rr := range rrs {
+		err = dumpRR(rr, dest, format)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Dump extracts all domain names from conn, formats them according to the
+// specified format, and writes the result to dest.
+func Dump(conn namecoin.Conn, dest io.Writer, format string) error {
+	if format != "zonefile" && format != "firefox-override" {
+		return fmt.Errorf("Invalid \"format\" argument: %s", format)
 	}
 
 	currentName := "d/"
@@ -72,7 +86,9 @@ func main() {
 
 	for {
 		results, err := conn.Scan(currentName, perCall)
-		log.Fatale(err, "scan")
+		if err != nil {
+			return fmt.Errorf("scan: %s", err)
+		}
 
 		if len(results) <= continuing {
 			log.Info("out of results, stopping")
@@ -89,31 +105,14 @@ func main() {
 		for i := range results {
 			r := &results[i]
 
-			// The order in which name_scan returns results is seemingly rather
-			// random, so we can't stop when we see a non-d/ name, so just skip it.
-			if !strings.HasPrefix(r.Name, "d/") {
-				continue
-			}
-
-			suffix, err := util.NamecoinKeyToBasename(r.Name)
+			err = dumpName(r, conn, dest, format)
 			if err != nil {
-				continue
-			}
-
-			errors = errors[0:0]
-			value := ncdomain.ParseValue(r.Name, r.Value, getNameFunc, errFunc)
-			if len(errors) > 0 {
-				continue
-			}
-
-			rrs, err := value.RRsRecursive(nil, suffix+".bit.", "bit.")
-			log.Warne(err, "error generating RRs")
-
-			for _, rr := range rrs {
-				printRR(rr)
+				return err
 			}
 		}
 
 		currentName = results[len(results)-1].Name
 	}
+
+	return nil
 }
