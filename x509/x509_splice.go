@@ -9,7 +9,7 @@
 // Last rebased on Go 1.10
 // Remove all content between "import" and "CreateCertificate" in original.
 // Remove all content after "CreateCertificate" in original.
-//go:generate bash install.sh
+//go:generate sh install.sh
 
 // Package x509 parses X.509-encoded keys and certificates.
 //
@@ -20,30 +20,11 @@ package x509
 
 import (
 	"bytes"
-	//"crypto"
-	//"crypto/dsa"
-	//"crypto/ecdsa"
-	//"crypto/elliptic"
-	//"crypto/rsa"
 	_ "crypto/sha1"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-	//"crypto/x509/pkix"
 	"encoding/asn1"
-	//"encoding/pem"
 	"errors"
-	//"fmt"
-	//"io"
-	//"math/big"
-	//"net"
-	//"net/url"
-	//"strconv"
-	//"strings"
-	//"time"
-	//"unicode/utf8"
-	//
-	//"golang_org/x/crypto/cryptobyte"
-	//cryptobyte_asn1 "golang_org/x/crypto/cryptobyte/asn1"
 )
 
 // CreateCertificate creates a new X.509v3 certificate based on a template.
