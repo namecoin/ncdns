@@ -15,6 +15,7 @@ import (
 	"github.com/namecoin/ncdns/backend"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/tlsoverridefirefox/tlsoverridefirefoxsync"
+	"github.com/namecoin/tlsrestrictnss/tlsrestrictnsssync"
 	"gopkg.in/hlandau/madns.v1"
 )
 
@@ -218,6 +219,11 @@ func (s *Server) Start() error {
 	err := tlsoverridefirefoxsync.Start(s.namecoinConn, s.cfg.CanonicalSuffix)
 	if err != nil {
 		return fmt.Errorf("Couldn't start Firefox override sync: %s", err)
+	}
+
+	err = tlsrestrictnsssync.Start()
+	if err != nil {
+		return fmt.Errorf("Couldn't start tlsrestrictnss sync: %s", err)
 	}
 
 	return nil

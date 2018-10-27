@@ -7,6 +7,7 @@ import "github.com/namecoin/ncdns/namecoin"
 import "github.com/namecoin/ncdns/util"
 import "github.com/namecoin/ncdns/ncdomain"
 import "github.com/namecoin/ncdns/tlshook"
+import "github.com/namecoin/tlsrestrictnss/tlsrestrictnsssync"
 import "github.com/hlandau/xlog"
 import "sync"
 import "fmt"
@@ -107,6 +108,11 @@ func convertEmail(email string) (string, error) {
 // Do low-level queries against an abstract zone file. This is the per-query
 // entrypoint from madns.
 func (b *Backend) Lookup(qname string) (rrs []dns.RR, err error) {
+	if !tlsrestrictnsssync.IsReady() {
+		err = fmt.Errorf("tlsrestrictnss not ready")
+		return
+	}
+
 	btx := &btx{}
 	btx.b = b
 	btx.qname = qname

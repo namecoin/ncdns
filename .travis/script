@@ -32,6 +32,7 @@ gometalinter.v2 --enable-all \
 --disable=gocyclo \
 --disable=gofmt \
 --disable=golint \
+--disable=gosec \
 --disable=ineffassign \
 --disable=lll \
 --disable=maligned \
