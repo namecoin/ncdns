@@ -2,6 +2,7 @@ package tlsoverridefirefoxsync
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -31,18 +32,36 @@ var zoneData string
 var zoneDataReady = false
 var zoneDataMux sync.Mutex
 
-// Note: the reason for the Fatal reaction to errors is that, if we stop
-// syncing the override list, Firefox will continue trusting .bit certs that
-// might be revoked in Namecoin.  Therefore, it is important that, in such a
-// situation, .bit domains must stop resolving until the issue is corrected.
-// Forcing ncdns to exit is the least complex way to achieve this.
+// This is true when an error occurred during sync.  Such an error could leave
+// the cert_override.txt with positive overrides that have since been revoked
+// by the blockchain, which would be a security issue if .bit resolving isn't
+// stopped.
+var syncFailure = true
+var syncFailureMux sync.Mutex
+
+func checkFlagsSane() error {
+	if firefoxProfileDirFlag.Value() == "" {
+		return fmt.Errorf("Missing required config option tlsoverridefirefox.profiledir")
+	}
+
+	return nil
+}
 
 func watchZone(conn namecoin.Conn) {
 	for {
 		var result bytes.Buffer
 
 		err := ncdumpzone.Dump(conn, &result, "firefox-override")
-		log.Fatale(err, "Couldn't dump zone for Firefox override sync")
+		if err != nil {
+			log.Errore(err, "Couldn't dump zone for Firefox override sync")
+
+			syncFailureMux.Lock()
+			syncFailure = true
+			syncFailureMux.Unlock()
+
+			time.Sleep(1 * time.Second)
+			continue
+		}
 
 		zoneDataMux.Lock()
 		zoneData = result.String()
@@ -54,12 +73,19 @@ func watchZone(conn namecoin.Conn) {
 }
 
 func watchProfile(suffix string) {
-	if firefoxProfileDirFlag.Value() == "" {
-		log.Fatal("Missing required config option tlsoverridefirefox.profiledir")
-	}
-
 	for {
-		if profileInUse() {
+		inUse, err := profileInUse()
+		if err != nil {
+			log.Errore(err, "Couldn't check if Firefox is running for override sync")
+
+			syncFailureMux.Lock()
+			syncFailure = true
+			syncFailureMux.Unlock()
+
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		if inUse {
 			time.Sleep(1 * time.Second)
 			continue
 		}
@@ -89,15 +115,31 @@ func watchProfile(suffix string) {
 				// read an empty file.
 				prevOverrides = []byte(``)
 			} else {
-				log.Fatale(err,
+				log.Errore(err,
 					"Couldn't read Firefox "+
 						"cert_override.txt")
+
+				syncFailureMux.Lock()
+				syncFailure = true
+				syncFailureMux.Unlock()
+
+				time.Sleep(1 * time.Second)
+				continue
 			}
 		}
 
 		filteredPrevOverrides, err := tlsoverridefirefox.
 			FilterOverrides(string(prevOverrides), suffix)
-		log.Fatale(err, "Couldn't filter Firefox overrides")
+		if err != nil {
+			log.Errore(err, "Couldn't filter Firefox overrides")
+
+			syncFailureMux.Lock()
+			syncFailure = true
+			syncFailureMux.Unlock()
+
+			time.Sleep(1 * time.Second)
+			continue
+		}
 
 		newOverrides := filteredPrevOverrides + zoneDataLocal + "\n"
 
@@ -105,21 +147,46 @@ func watchProfile(suffix string) {
 		// TODO: maybe instead write to a temp file and then move the file into place?
 		err = ioutil.WriteFile(firefoxProfileDirFlag.Value()+
 			"/cert_override.txt", []byte(newOverrides), 0600)
-		log.Fatale(err, "Couldn't write Firefox cert_override.txt")
+		if err != nil {
+			log.Errore(err, "Couldn't write Firefox cert_override.txt")
 
+			syncFailureMux.Lock()
+			syncFailure = true
+			syncFailureMux.Unlock()
+
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		syncFailureMux.Lock()
+		syncFailure = false
+		syncFailureMux.Unlock()
 		log.Debug("Finished syncing zone to cert_override.txt")
 
 		time.Sleep(10 * time.Minute)
 	}
 }
 
-func profileInUse() bool {
+func profileInUse() (bool, error) {
 	// This glob pattern matches the ".sqlite-wal" and ".sqlite-shm" files
 	// that are only present when Firefox's databases are open.
 	matches, err := filepath.Glob(firefoxProfileDirFlag.Value() + "/*.sqlite-*")
-	log.Fatale(err, "Couldn't check if Firefox is running for override sync")
+	if err != nil {
+		return true, err
+	}
 
-	return matches != nil
+	return matches != nil, nil
+}
+
+// IsReady returns true if the overrides are successfully synced.  If it
+// returns false, it may be unsafe for TLS connections to rely on the synced
+// overrides.
+func IsReady() bool {
+	syncFailureMux.Lock()
+	result := !syncFailure
+	syncFailureMux.Unlock()
+
+	return result
 }
 
 // Start starts 2 background threads that synchronize the blockchain's TLSA
@@ -127,8 +194,17 @@ func profileInUse() bool {
 // to access Namecoin Core, as well as a host suffix (usually "bit").
 func Start(conn namecoin.Conn, suffix string) error {
 	if syncEnableFlag.Value() {
+		err := checkFlagsSane()
+		if err != nil {
+			return err
+		}
+
 		go watchZone(conn)
 		go watchProfile(suffix)
+	} else {
+		syncFailureMux.Lock()
+		syncFailure = false
+		syncFailureMux.Unlock()
 	}
 	return nil
 }
