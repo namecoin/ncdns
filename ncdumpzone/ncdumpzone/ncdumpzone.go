@@ -23,7 +23,8 @@ var (
 		"Namecoin RPC password")
 	formatFlag = cflag.String(flagGroup, "format", "zonefile", "Output "+
 		"format.  \"zonefile\" = DNS zone file.  "+
-		"\"firefox-override\" = Firefox cert_override.txt format.")
+		"\"firefox-override\" = Firefox cert_override.txt format.  "+
+		"\"url-list\" = URL list.")
 )
 
 var conn namecoin.Conn
