@@ -46,6 +46,7 @@ type Config struct {
 	NamecoinRPCPassword   string `default:"" usage:"Namecoin RPC password"`
 	NamecoinRPCAddress    string `default:"127.0.0.1:8336" usage:"Namecoin RPC server address"`
 	NamecoinRPCCookiePath string `default:"" usage:"Namecoin RPC cookie path (if set, used instead of password)"`
+	NamecoinRPCTimeout    int    `default:"1500" usage:"Timeout (in milliseconds) for Namecoin RPC requests"`
 	CacheMaxEntries       int    `default:"100" usage:"Maximum name cache entries"`
 	SelfName              string `default:"" usage:"The FQDN of this nameserver. If empty, a pseudo-hostname is generated."`
 	SelfIP                string `default:"127.127.127.127" usage:"The canonical IP address for this service"`
@@ -106,6 +107,7 @@ func New(cfg *Config) (s *Server, err error) {
 
 	b, err := backend.New(&backend.Config{
 		NamecoinConn:         s.namecoinConn,
+		NamecoinTimeout:      cfg.NamecoinRPCTimeout,
 		CacheMaxEntries:      cfg.CacheMaxEntries,
 		SelfIP:               cfg.SelfIP,
 		Hostmaster:           cfg.Hostmaster,
