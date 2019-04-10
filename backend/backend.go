@@ -33,6 +33,9 @@ var log, Log = xlog.New("ncdns.backend")
 type Config struct {
 	NamecoinConn namecoin.Conn
 
+	// Timeout (in milliseconds) for Namecoin RPC requests
+	NamecoinTimeout int
+
 	// Maximum entries to permit in name cache. If zero, a default value is used.
 	CacheMaxEntries int
 
@@ -355,7 +358,7 @@ func (b *Backend) resolveName(name string) (jsonValue string, err error) {
 	select {
 	case <-result:
 		return
-	case <-time.After(1500 * time.Millisecond):
+	case <-time.After(time.Duration(b.cfg.NamecoinTimeout) * time.Millisecond):
 		return "", fmt.Errorf("timeout")
 	}
 }
