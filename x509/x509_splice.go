@@ -1,12 +1,12 @@
 // Copyright 2009 The Go Authors. All rights reserved.
-// Modifications Copyright 2015-2018 Jeremy Rand. All rights reserved.
+// Modifications Copyright 2015-2019 Jeremy Rand. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 // This code is modified from the stock CreateCertificate to use a
 // pre-existing signature.
 
-// Last rebased on Go 1.10
+// Last rebased on Go 1.11
 // Remove all content between "import" and "CreateCertificate" in original.
 // Remove all content after "CreateCertificate" in original.
 //go:generate bash install.sh
@@ -47,11 +47,39 @@ import (
 )
 
 // CreateCertificate creates a new X.509v3 certificate based on a template.
-// The following members of template are used: AuthorityKeyId,
-// BasicConstraintsValid, DNSNames, ExcludedDNSDomains, ExtKeyUsage,
-// IsCA, KeyUsage, MaxPathLen, MaxPathLenZero, NotAfter, NotBefore,
-// PermittedDNSDomains, PermittedDNSDomainsCritical, SerialNumber,
-// SignatureAlgorithm, Subject, SubjectKeyId, and UnknownExtKeyUsage.
+// The following members of template are used:
+//
+//  - AuthorityKeyId
+//  - BasicConstraintsValid
+//  - CRLDistributionPoints
+//  - DNSNames
+//  - EmailAddresses
+//  - ExcludedDNSDomains
+//  - ExcludedEmailAddresses
+//  - ExcludedIPRanges
+//  - ExcludedURIDomains
+//  - ExtKeyUsage
+//  - ExtraExtensions
+//  - IsCA
+//  - IssuingCertificateURL
+//  - KeyUsage
+//  - MaxPathLen
+//  - MaxPathLenZero
+//  - NotAfter
+//  - NotBefore
+//  - OCSPServer
+//  - PermittedDNSDomains
+//  - PermittedDNSDomainsCritical
+//  - PermittedEmailAddresses
+//  - PermittedIPRanges
+//  - PermittedURIDomains
+//  - PolicyIdentifiers
+//  - SerialNumber
+//  - SignatureAlgorithm
+//  - Subject
+//  - SubjectKeyId
+//  - URIs
+//  - UnknownExtKeyUsage
 //
 // The certificate is signed by parent. If parent is equal to template then the
 // certificate is self-signed. The parameter pub is the public key of the
