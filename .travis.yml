@@ -32,4 +32,4 @@ env:
     # GITHUB_TOKEN for automatic releases
     - secure: "at1oJs7ib7glx3W+zk+OkT041LdknVXirIhN403CIihVUrlOhODY7yCTgvF4Rk0jYBJiT35Q2qxpgfWF2qGnsNsQmjG3ydDWQDCepDc/CgXfLyoiSTJK5vTK72dYWTVsBTycXbj1CbSy2X2ah/KWjc4RcgZ67ER7mDpRU5nFeow="
     # Set this to the Go version to use for releases (must appear in version list above).
-    - RELEASE_GO_VERSION="1.10.3"
+    - RELEASE_GO_VERSION="1.12.5"
