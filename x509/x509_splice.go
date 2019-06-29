@@ -6,7 +6,7 @@
 // This code is modified from the stock CreateCertificate to use a
 // pre-existing signature.
 
-// Last rebased on Go 1.11
+// Last rebased on Go 1.12
 // Remove all content between "import" and "CreateCertificate" in original.
 // Remove all content after "CreateCertificate" in original.
 //go:generate bash install.sh
@@ -33,6 +33,8 @@ import (
 	//"encoding/pem"
 	"errors"
 	//"fmt"
+	//"internal/x/crypto/cryptobyte"
+	//cryptobyte_asn1 "internal/x/crypto/cryptobyte/asn1"
 	//"io"
 	//"math/big"
 	//"net"
@@ -41,9 +43,6 @@ import (
 	//"strings"
 	//"time"
 	//"unicode/utf8"
-	//
-	//"golang_org/x/crypto/cryptobyte"
-	//cryptobyte_asn1 "golang_org/x/crypto/cryptobyte/asn1"
 )
 
 // CreateCertificate creates a new X.509v3 certificate based on a template.
