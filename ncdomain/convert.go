@@ -10,8 +10,8 @@ import "github.com/namecoin/ncdns/util"
 import "strings"
 import "strconv"
 
-import "github.com/namecoin/ncdns/x509"
 import "github.com/namecoin/ncdns/certdehydrate"
+import "github.com/namecoin/x509-signature-splice/x509"
 
 const depthLimit = 16
 const mergeDepthLimit = 4

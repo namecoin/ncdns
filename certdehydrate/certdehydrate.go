@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-import "github.com/namecoin/ncdns/x509"
+import "github.com/namecoin/x509-signature-splice/x509"
 
 // A DehydratedCertificate represents the (nearly) minimal set of data required
 // to deterministically construct a valid x509 certificate when combined with a
