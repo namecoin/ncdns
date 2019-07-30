@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/ncdns/x509"
+	"github.com/namecoin/x509-signature-splice/x509"
 )
 
 func TestDehydratedCertIdentityOperation(t *testing.T) {
