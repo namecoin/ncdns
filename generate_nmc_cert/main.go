@@ -14,7 +14,7 @@
 // "dehydrated certificates", suitable for inclusion in a Namecoin name.
 
 // Last rebased against Go 1.8.3.
-// Future rebases need to rebase both the main flow and the falseHost flow.
+// Future rebases need to rebase all of the main, parent, and falseHost flows.
 
 package main
 
@@ -51,6 +51,8 @@ var (
 	//ecdsaCurve = flag.String("ecdsa-curve", "", "ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521")
 	ecdsaCurve = flag.String("ecdsa-curve", "P256", "ECDSA curve to use to generate a key. Valid values are P224, P256, P384, P521")
 	falseHost  = flag.String("false-host", "", "(Optional) Generate a false cert for this host; used to test x.509 implementations for safety regarding handling of the CA flag and KeyUsage")
+	useCA      = flag.Bool("use-ca", false, "Use a CA instead of self-signing")
+	parentKey  = flag.String("parent-key", "", "(Optional) Path to existing CA private key to sign with")
 )
 
 func publicKey(priv interface{}) interface{} {
@@ -93,13 +95,13 @@ func main() {
 	case "":
 		//priv, err = rsa.GenerateKey(rand.Reader, *rsaBits)
 		log.Fatalf("Missing required --ecdsa-curve parameter")
-	case "P224":
+	case "P224": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P224(), rand.Reader)
-	case "P256":
+	case "P256": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	case "P384":
+	case "P384": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
-	case "P521":
+	case "P521": // nolint: goconst
 		priv, err = ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	default:
 		fmt.Fprintf(os.Stderr, "Unrecognized elliptic curve: %q", *ecdsaCurve)
@@ -188,7 +190,17 @@ func main() {
 	//	template.KeyUsage |= x509.KeyUsageCertSign
 	//}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
+	var parent x509.Certificate
+	var parentPriv interface{}
+
+	if *useCA {
+		parent, parentPriv = getParent()
+	} else {
+		parent, parentPriv = template, priv
+	}
+
+	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parent, publicKey(priv), parentPriv)
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %s", err)
 	}
@@ -209,6 +221,11 @@ func main() {
 	pem.Encode(keyOut, pemBlockForKey(priv))
 	keyOut.Close()
 	log.Print("written key.pem\n")
+
+	if *useCA {
+		log.Print("SUCCESS.  Place cert.pem and key.pem in your HTTPS server, and place the above JSON in the \"tls\" field for your Namecoin name.")
+		return
+	}
 
 	parsedResult, err := x509.ParseCertificate(derBytes)
 	if err != nil {

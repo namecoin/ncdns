@@ -25,9 +25,11 @@ import (
 	//"crypto/rsa"
 	//"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	//"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math/big"
 	//"net"
@@ -75,7 +77,7 @@ import (
 //}
 
 //func main() {
-func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
+func getParent() (parentCert x509.Certificate, parentPriv interface{}) {
 //	flag.Parse()
 
 //	if len(*host) == 0 {
@@ -101,8 +103,21 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 		os.Exit(1)
 	}
 	if err != nil {
-		//log.Fatalf("failed to generate private key: %s", err)
-		log.Fatalf("failed to generate false private key: %s", err)
+		log.Fatalf("failed to generate private key: %s", err)
+	}
+
+	var privPEM []byte
+	if *parentKey != "" {
+		log.Print("Using existing CA private key")
+		privPEM, err = ioutil.ReadFile(*parentKey)
+		if err != nil {
+			log.Fatalf("failed to read private key: %s", err)
+		}
+		privBlock, _ := pem.Decode(privPEM)
+		priv, err = x509.ParseECPrivateKey(privBlock.Bytes)
+		if err != nil {
+			log.Fatalf("failed to parse private key: %s", err)
+		}
 	}
 
 	var notBefore time.Time
@@ -118,31 +133,30 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 
 	notAfter := notBefore.Add(*validFor)
 
-	//serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	//serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	//if err != nil {
-	//	log.Fatalf("failed to generate serial number: %s", err)
-	//}
-	serialNumber := big.NewInt(2)
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		log.Fatalf("failed to generate serial number: %s", err)
+	}
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			//Organization: []string{"Acme Co"},
-			CommonName:   *falseHost,
+			CommonName:   *host + " Domain CA",
 			SerialNumber: "Namecoin TLS Certificate",
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
 
-		// x509.KeyUsageKeyEncipherment is used for RSA key exchange,
-		// but not DHE/ECDHE key exchange.  Since everyone should be
-		// using ECDHE (due to forward secrecy), we disallow
-		// x509.KeyUsageKeyEncipherment in our template.
+		IsCA: true,
 		//KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		KeyUsage:              x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageCertSign,
+		//ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
+
+		PermittedDNSDomainsCritical: true,
+		PermittedDNSDomains:         []string{*host},
 	}
 
 	//hosts := strings.Split(*host, ",")
@@ -151,7 +165,7 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 	//		template.IPAddresses = append(template.IPAddresses, ip)
 	//	} else {
 	//		template.DNSNames = append(template.DNSNames, h)
-	template.DNSNames = append(template.DNSNames, *falseHost)
+	//template.DNSNames = append(template.DNSNames, *falseHost)
 	//	}
 	//}
 
@@ -161,32 +175,41 @@ func doFalseHost(parentTemplate x509.Certificate, parentPriv interface{}) {
 	//}
 
 	//derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &parentTemplate, publicKey(priv), parentPriv)
-	if err != nil {
-		//log.Fatalf("Failed to create certificate: %s", err)
-		log.Fatalf("Failed to create false certificate: %s", err)
-	}
+	//if err != nil {
+	//	log.Fatalf("Failed to create certificate: %s", err)
+	//}
 
 	//certOut, err := os.Create("cert.pem")
-	certOut, err := os.Create("falseCert.pem")
-	if err != nil {
-		//log.Fatalf("failed to open cert.pem for writing: %s", err)
-		log.Fatalf("failed to open falseCert.pem for writing: %s", err)
-	}
-	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	certOut.Close()
+	//if err != nil {
+	//	log.Fatalf("failed to open cert.pem for writing: %s", err)
+	//}
+	//pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	//certOut.Close()
 	//log.Print("written cert.pem\n")
-	log.Print("written falseCert.pem\n")
+
+	pubBytes, err := x509.MarshalPKIXPublicKey(publicKey(priv))
+	if err != nil {
+		log.Print("failed to marshal CA public key:", err)
+		return
+	}
+	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
+	log.Printf("Your CA's \"tls\" record is: [2, 1, 0, \"%s\"]", pubB64)
+
+	if *parentKey != "" {
+		return template, priv
+	}
 
 	//keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
-	keyOut, err := os.OpenFile("falseKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile("caKey.pem", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		//log.Print("failed to open key.pem for writing:", err)
-		log.Print("failed to open falseKey.pem for writing:", err)
+		log.Print("failed to open caKey.pem for writing:", err)
 		return
 	}
 	pem.Encode(keyOut, pemBlockForKey(priv))
 	keyOut.Close()
 	//log.Print("written key.pem\n")
-	log.Print("written falseKey.pem\n")
+	log.Print("written caKey.pem\n")
+
+	return template, priv
 }
