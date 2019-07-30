@@ -1,5 +1,7 @@
 language: go
 go:
+  - "1.10.x"
+  - "1.11.x"
   - "1.12.5"
   - "1.12.x"
   - "1.x"
@@ -17,6 +19,13 @@ sudo: false
 
 install:
   - go get -d -v -t ./...
+  - X509_BRANCH=master
+  - if [[ "$(go version)" =~ go1.[5678] ]]; then X509_BRANCH=go1.6; fi
+  - if [[ "$(go version)" =~ go1.9 ]]; then X509_BRANCH=go1.9; fi
+  - if [[ "$(go version)" =~ go1.10 ]]; then X509_BRANCH=go1.10; fi
+  - if [[ "$(go version)" =~ go1.11 ]]; then X509_BRANCH=go1.11; fi
+  - if [[ "$(go version)" =~ go1.12 ]]; then X509_BRANCH=go1.12; fi
+  - pushd $(go env GOPATH)/src/github.com/namecoin/x509-signature-splice; git checkout $X509_BRANCH; popd
   - go generate -v github.com/namecoin/x509-signature-splice/...
   - go get -v -t ./...
   - env GOOS=windows GOARCH=amd64 go get -d -v -t ./...
