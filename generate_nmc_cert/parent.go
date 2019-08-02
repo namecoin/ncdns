@@ -37,7 +37,7 @@ import (
 	//"strings"
 	"time"
 
-	"github.com/namecoin/ncdns/x509"
+	"github.com/namecoin/x509-signature-splice/x509"
 )
 
 //var (
