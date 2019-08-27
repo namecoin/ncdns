@@ -4,13 +4,19 @@
 #travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v2 github.com/miekg/exdns/q github.com/namecoin/dns-prop279
 travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v2
 
-go test -v ./...
+go test -v -coverprofile coverage.out ./...
 RESULT=$?
 
 echo Done tests with exit code $RESULT
 if [ "$RESULT" != "0" ]; then
   return $RESULT
 fi
+
+# TODO: Maybe fail the build if new uncovered lines are added.
+echo "Uncovered lines:"
+echo ""
+grep -v -e " 1$" coverage.out
+echo ""
 
 # Static analysis
 
