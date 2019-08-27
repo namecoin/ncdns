@@ -1,0 +1,16 @@
+#!/usr/bin/env python3
+
+import sys
+
+for line in sys.stdin:
+    try:
+        filename, no_filename = line.split(':')
+        start_and_end = no_filename.split(' ')[0]
+        start, end = start_and_end.split(',')
+        start_line = int(start.split('.')[0])
+        end_line = int(end.split('.')[0])
+    except ValueError:
+        print(line)
+        continue
+    for line_num in range(start_line, end_line+1):
+        print(filename + ':' + str(line_num) + ': Uncovered')
