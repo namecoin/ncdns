@@ -2,15 +2,25 @@
 
 # Upstream q is broken, and this also causes dns-prop279 to be broken.
 #travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v2 github.com/miekg/exdns/q github.com/namecoin/dns-prop279
-travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v2
+travis_retry go get github.com/tcnksm/ghr github.com/mitchellh/gox gopkg.in/alecthomas/gometalinter.v2 github.com/bradleyfalzon/revgrep/...
 
-go test -v ./...
+go test -v -coverprofile coverage.out ./...
 RESULT=$?
 
 echo Done tests with exit code $RESULT
 if [ "$RESULT" != "0" ]; then
   return $RESULT
 fi
+
+echo "Uncovered lines:"
+echo ""
+grep -v -e " 1$" coverage.out | sed "s_github.com/namecoin/ncdns/__"
+echo ""
+
+echo "New/changed uncovered lines:"
+echo ""
+grep -v -e " 1$" coverage.out | sed "s_github.com/namecoin/ncdns/__" | ./.travis/coverage_interpolate | revgrep "${TRAVIS_BRANCH}"
+echo ""
 
 # Static analysis
 
