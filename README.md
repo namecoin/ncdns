@@ -99,7 +99,7 @@ Option A: Using Go build commands (works on any platform with Bash):
 2. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
    retrieved automatically.
 
-3. Run `go generate github.com/namecoin/ncdns/...`.  Some source code will be generated.
+3. Run `go generate github.com/namecoin/x509-signature-splice/...`.  Some source code will be generated.
 
 4. Run `go get -t github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at
    $GOPATH/bin/ncdns.
