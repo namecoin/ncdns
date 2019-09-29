@@ -7,6 +7,12 @@ go:
   - "1.x"
   - "master"
 
+notifications:
+  irc:
+    channels:
+      - "chat.freenode.net#namecoin-dev"
+    on_success: never
+
 addons:
   apt:
     packages:
