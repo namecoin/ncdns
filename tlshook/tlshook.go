@@ -1,3 +1,5 @@
+// +build !no_namecoin_tls
+
 package tlshook
 
 import (

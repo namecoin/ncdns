@@ -6,6 +6,11 @@ if ! [[ "$TRAVIS_TAG" =~ ^v[0-9] ]]; then
   return 0
 fi
 
+if [ "${NO_NAMECOIN_TLS}" != "0" ]; then
+  echo "Skipping release upload because TLS is disabled."
+  return 0
+fi
+
 if [ -z "$GITHUB_TOKEN" ]; then
   echo "Don't appear to have GitHub token, cannot continue."
   return 0
