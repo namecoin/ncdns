@@ -24,7 +24,9 @@ addons:
 sudo: false
 
 install:
-  - go get -d -v -t ./...
+  - if [[ "${NO_NAMECOIN_TLS}" = 1 ]]; then TAGS="no_namecoin_tls"; fi
+  - if [[ "${NO_NAMECOIN_TLS}" = 0 ]]; then TAGS=""; fi
+  - go get -tags "$TAGS" -d -v -t ./...
   - X509_BRANCH=master
   - if [[ "$(go version)" =~ go1.[5678] ]]; then X509_BRANCH=go1.6; fi
   - if [[ "$(go version)" =~ go1.9 ]]; then X509_BRANCH=go1.9; fi
@@ -33,8 +35,8 @@ install:
   - if [[ "$(go version)" =~ go1.12 ]]; then X509_BRANCH=go1.12; fi
   - pushd $(go env GOPATH)/src/github.com/namecoin/x509-signature-splice; git checkout $X509_BRANCH; popd
   - go generate -v github.com/namecoin/x509-signature-splice/...
-  - go get -v -t ./...
-  - env GOOS=windows GOARCH=amd64 go get -d -v -t ./...
+  - go get -tags "$TAGS" -v -t ./...
+  - env GOOS=windows GOARCH=amd64 go get -tags "$TAGS" -d -v -t ./...
 script:
   - source ./.travis/script
 after_success:
@@ -46,3 +48,6 @@ env:
     - secure: "at1oJs7ib7glx3W+zk+OkT041LdknVXirIhN403CIihVUrlOhODY7yCTgvF4Rk0jYBJiT35Q2qxpgfWF2qGnsNsQmjG3ydDWQDCepDc/CgXfLyoiSTJK5vTK72dYWTVsBTycXbj1CbSy2X2ah/KWjc4RcgZ67ER7mDpRU5nFeow="
     # Set this to the Go version to use for releases (must appear in version list above).
     - RELEASE_GO_VERSION="1.12.5"
+  matrix:
+    - NO_NAMECOIN_TLS=1
+    - NO_NAMECOIN_TLS=0

@@ -11,6 +11,11 @@ import "sort"
 func TestSuite(t *testing.T) {
 	items := testutil.SuiteReader(t)
 	for ti := range items {
+		// Don't test TLSA records if TLSA is disabled via build tag.
+		if tlsaDisabled && strings.HasPrefix(ti.ID, "tlsa") {
+			continue
+		}
+
 		resolve := func(name string) (string, error) {
 			v, ok := ti.Names[name]
 			if !ok {
