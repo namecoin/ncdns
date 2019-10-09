@@ -34,6 +34,11 @@ install:
   - if [[ "$(go version)" =~ go1.11 ]]; then X509_BRANCH=go1.11; fi
   - if [[ "$(go version)" =~ go1.12 ]]; then X509_BRANCH=go1.12; fi
   - pushd $(go env GOPATH)/src/github.com/namecoin/x509-signature-splice; git checkout $X509_BRANCH; popd
+  - GOXSYS_BRANCH=master
+  # goxsys bug for Go 1.11 and earlier: https://github.com/golang/go/issues/34742
+  - if [[ "$(go version)" =~ go1.[56789] ]]; then GOXSYS_BRANCH=release-branch.go1.13; fi
+  - if [[ "$(go version)" =~ go1.1[01] ]]; then GOXSYS_BRANCH=release-branch.go1.13; fi
+  - pushd $(go env GOPATH)/src/golang.org/x/sys; git checkout $GOXSYS_BRANCH; popd
   - go generate -v github.com/namecoin/x509-signature-splice/...
   - go get -tags "$TAGS" -v -t ./...
   - env GOOS=windows GOARCH=amd64 go get -tags "$TAGS" -d -v -t ./...
