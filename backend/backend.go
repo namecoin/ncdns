@@ -18,13 +18,12 @@ import "time"
 // Provides an abstract zone file for the Namecoin .bit TLD.
 type Backend struct {
 	//s *Server
-	nc         namecoin.Conn
-	cache      lru.Cache // items are of type *Domain
+	nc namecoin.Conn
+	// caches map keys are stream isolation ID's; items are of type *Domain
+	caches     map[string]*lru.Cache
 	cacheMutex sync.Mutex
 	cfg        Config
 }
-
-const defaultMaxEntries = 100
 
 var log, Log = xlog.New("ncdns.backend")
 
@@ -35,7 +34,7 @@ type Config struct {
 	// Timeout (in milliseconds) for Namecoin RPC requests
 	NamecoinTimeout int
 
-	// Maximum entries to permit in name cache. If zero, a default value is used.
+	// Maximum entries to permit in name cache.
 	CacheMaxEntries int
 
 	// Nameservers to advertise at zone apex. The first is considered the primary.
@@ -68,10 +67,7 @@ func New(cfg *Config) (backend *Backend, err error) {
 	//b.nc.Password = cfg.RPCPassword
 	//b.nc.Server = cfg.RPCAddress
 
-	b.cache.MaxEntries = cfg.CacheMaxEntries
-	if b.cache.MaxEntries == 0 {
-		b.cache.MaxEntries = defaultMaxEntries
-	}
+	b.caches = make(map[string]*lru.Cache)
 
 	hostmaster, err := convertEmail(b.cfg.Hostmaster)
 	if err != nil {
@@ -291,7 +287,7 @@ type domain struct {
 }
 
 func (b *Backend) getNamecoinEntry(name, streamIsolationID string) (*domain, error) {
-	d := b.getNamecoinEntryCache(name)
+	d := b.getNamecoinEntryCache(name, streamIsolationID)
 	if d != nil {
 		return d, nil
 	}
@@ -301,15 +297,20 @@ func (b *Backend) getNamecoinEntry(name, streamIsolationID string) (*domain, err
 		return nil, err
 	}
 
-	b.addNamecoinEntryToCache(name, d)
+	b.addNamecoinEntryToCache(name, d, streamIsolationID)
 	return d, nil
 }
 
-func (b *Backend) getNamecoinEntryCache(name string) *domain {
+func (b *Backend) getNamecoinEntryCache(name, streamIsolationID string) *domain {
 	b.cacheMutex.Lock()
 	defer b.cacheMutex.Unlock()
 
-	if dd, ok := b.cache.Get(name); ok {
+	cache, ok := b.caches[streamIsolationID]
+	if !ok {
+		return nil
+	}
+
+	if dd, ok := cache.Get(name); ok {
 		d := dd.(*domain)
 		return d
 	}
@@ -317,11 +318,19 @@ func (b *Backend) getNamecoinEntryCache(name string) *domain {
 	return nil
 }
 
-func (b *Backend) addNamecoinEntryToCache(name string, d *domain) {
+func (b *Backend) addNamecoinEntryToCache(name string, d *domain, streamIsolationID string) {
 	b.cacheMutex.Lock()
 	defer b.cacheMutex.Unlock()
 
-	b.cache.Add(name, d)
+	cache, ok := b.caches[streamIsolationID]
+	if !ok {
+		b.caches[streamIsolationID] = &lru.Cache{
+			MaxEntries: b.cfg.CacheMaxEntries,
+		}
+		cache = b.caches[streamIsolationID]
+	}
+
+	cache.Add(name, d)
 }
 
 func (b *Backend) getNamecoinEntryLL(name, streamIsolationID string) (*domain, error) {
