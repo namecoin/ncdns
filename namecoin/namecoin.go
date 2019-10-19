@@ -4,7 +4,7 @@ package namecoin
 import (
 	extratypes "github.com/hlandau/ncbtcjsontypes"
 	"github.com/hlandauf/btcjson"
-	"gopkg.in/hlandau/madns.v1/merr"
+	"gopkg.in/hlandau/madns.v2/merr"
 
 	"expvar"
 	"fmt"
@@ -57,8 +57,13 @@ func (nc *Conn) rpcSend(cmd btcjson.Cmd) (btcjson.Reply, error) {
 // Query the Namecoin daemon for a Namecoin domain (e.g. d/example).
 // If the domain exists, returns the value stored in Namecoin, which should be JSON.
 // Note that this will return domain data even if the domain is expired.
-func (nc *Conn) Query(name string) (v string, err error) {
+func (nc *Conn) Query(name string, streamIsolationID string) (v string, err error) {
 	cQueryCalls.Add(1)
+
+	// TODO: Pass stream isolation ID to namecoind, and remove this error
+	if streamIsolationID != "" {
+		return "", fmt.Errorf("Stream isolation ID '%s' is not yet passed to namecoind", streamIsolationID)
+	}
 
 	cmd, err := extratypes.NewNameShowCmd(newID(), name)
 	if err != nil {

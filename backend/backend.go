@@ -2,7 +2,7 @@ package backend
 
 import "github.com/miekg/dns"
 import "github.com/golang/groupcache/lru"
-import "gopkg.in/hlandau/madns.v1/merr"
+import "gopkg.in/hlandau/madns.v2/merr"
 import "github.com/namecoin/ncdns/namecoin"
 import "github.com/namecoin/ncdns/util"
 import "github.com/namecoin/ncdns/ncdomain"
@@ -18,13 +18,12 @@ import "time"
 // Provides an abstract zone file for the Namecoin .bit TLD.
 type Backend struct {
 	//s *Server
-	nc         namecoin.Conn
-	cache      lru.Cache // items are of type *Domain
+	nc namecoin.Conn
+	// caches map keys are stream isolation ID's; items are of type *Domain
+	caches     map[string]*lru.Cache
 	cacheMutex sync.Mutex
 	cfg        Config
 }
-
-const defaultMaxEntries = 100
 
 var log, Log = xlog.New("ncdns.backend")
 
@@ -35,7 +34,7 @@ type Config struct {
 	// Timeout (in milliseconds) for Namecoin RPC requests
 	NamecoinTimeout int
 
-	// Maximum entries to permit in name cache. If zero, a default value is used.
+	// Maximum entries to permit in name cache.
 	CacheMaxEntries int
 
 	// Nameservers to advertise at zone apex. The first is considered the primary.
@@ -68,10 +67,7 @@ func New(cfg *Config) (backend *Backend, err error) {
 	//b.nc.Password = cfg.RPCPassword
 	//b.nc.Server = cfg.RPCAddress
 
-	b.cache.MaxEntries = cfg.CacheMaxEntries
-	if b.cache.MaxEntries == 0 {
-		b.cache.MaxEntries = defaultMaxEntries
-	}
+	b.caches = make(map[string]*lru.Cache)
 
 	hostmaster, err := convertEmail(b.cfg.Hostmaster)
 	if err != nil {
@@ -109,7 +105,7 @@ func convertEmail(email string) (string, error) {
 
 // Do low-level queries against an abstract zone file. This is the per-query
 // entrypoint from madns.
-func (b *Backend) Lookup(qname string) (rrs []dns.RR, err error) {
+func (b *Backend) Lookup(qname, streamIsolationID string) (rrs []dns.RR, err error) {
 	err = lookupReadyError()
 	if err != nil {
 		return
@@ -118,6 +114,7 @@ func (b *Backend) Lookup(qname string) (rrs []dns.RR, err error) {
 	btx := &btx{}
 	btx.b = b
 	btx.qname = qname
+	btx.streamIsolationID = streamIsolationID
 	return btx.Do()
 }
 
@@ -125,6 +122,8 @@ func (b *Backend) Lookup(qname string) (rrs []dns.RR, err error) {
 type btx struct {
 	b     *Backend
 	qname string
+
+	streamIsolationID string
 
 	subname, basename, rootname string
 }
@@ -269,7 +268,7 @@ func (tx *btx) doUserDomain() (rrs []dns.RR, err error) {
 		return
 	}
 
-	d, err := tx.b.getNamecoinEntry(ncname)
+	d, err := tx.b.getNamecoinEntry(ncname, tx.streamIsolationID)
 	if err != nil {
 		return nil, err
 	}
@@ -287,26 +286,31 @@ type domain struct {
 	ncv *ncdomain.Value
 }
 
-func (b *Backend) getNamecoinEntry(name string) (*domain, error) {
-	d := b.getNamecoinEntryCache(name)
+func (b *Backend) getNamecoinEntry(name, streamIsolationID string) (*domain, error) {
+	d := b.getNamecoinEntryCache(name, streamIsolationID)
 	if d != nil {
 		return d, nil
 	}
 
-	d, err := b.getNamecoinEntryLL(name)
+	d, err := b.getNamecoinEntryLL(name, streamIsolationID)
 	if err != nil {
 		return nil, err
 	}
 
-	b.addNamecoinEntryToCache(name, d)
+	b.addNamecoinEntryToCache(name, d, streamIsolationID)
 	return d, nil
 }
 
-func (b *Backend) getNamecoinEntryCache(name string) *domain {
+func (b *Backend) getNamecoinEntryCache(name, streamIsolationID string) *domain {
 	b.cacheMutex.Lock()
 	defer b.cacheMutex.Unlock()
 
-	if dd, ok := b.cache.Get(name); ok {
+	cache, ok := b.caches[streamIsolationID]
+	if !ok {
+		return nil
+	}
+
+	if dd, ok := cache.Get(name); ok {
 		d := dd.(*domain)
 		return d
 	}
@@ -314,20 +318,28 @@ func (b *Backend) getNamecoinEntryCache(name string) *domain {
 	return nil
 }
 
-func (b *Backend) addNamecoinEntryToCache(name string, d *domain) {
+func (b *Backend) addNamecoinEntryToCache(name string, d *domain, streamIsolationID string) {
 	b.cacheMutex.Lock()
 	defer b.cacheMutex.Unlock()
 
-	b.cache.Add(name, d)
+	cache, ok := b.caches[streamIsolationID]
+	if !ok {
+		b.caches[streamIsolationID] = &lru.Cache{
+			MaxEntries: b.cfg.CacheMaxEntries,
+		}
+		cache = b.caches[streamIsolationID]
+	}
+
+	cache.Add(name, d)
 }
 
-func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
-	v, err := b.resolveName(name)
+func (b *Backend) getNamecoinEntryLL(name, streamIsolationID string) (*domain, error) {
+	v, err := b.resolveName(name, streamIsolationID)
 	if err != nil {
 		return nil, err
 	}
 
-	d, err := b.jsonToDomain(name, v)
+	d, err := b.jsonToDomain(name, v, streamIsolationID)
 	if err != nil {
 		return nil, err
 	}
@@ -335,7 +347,7 @@ func (b *Backend) getNamecoinEntryLL(name string) (*domain, error) {
 	return d, nil
 }
 
-func (b *Backend) resolveName(name string) (jsonValue string, err error) {
+func (b *Backend) resolveName(name, streamIsolationID string) (jsonValue string, err error) {
 	if fv, ok := b.cfg.FakeNames[name]; ok {
 		if fv == "NX" {
 			return "", merr.ErrNoSuchDomain
@@ -349,7 +361,7 @@ func (b *Backend) resolveName(name string) (jsonValue string, err error) {
 	// Namecoin JSON-RPC seem sluggish sometimes.
 	result := make(chan struct{}, 1)
 	go func() {
-		jsonValue, err = b.nc.Query(name)
+		jsonValue, err = b.nc.Query(name, streamIsolationID)
 		log.Errore(err, "failed to query namecoin")
 		result <- struct{}{}
 	}()
@@ -362,10 +374,14 @@ func (b *Backend) resolveName(name string) (jsonValue string, err error) {
 	}
 }
 
-func (b *Backend) jsonToDomain(name, jsonValue string) (*domain, error) {
+func (b *Backend) jsonToDomain(name, jsonValue, streamIsolationID string) (*domain, error) {
 	d := &domain{}
 
-	v := ncdomain.ParseValue(name, jsonValue, b.resolveExtraName, nil)
+	resolveExtraIsolated := func(n string) (string, error) {
+		return b.resolveExtraName(n, streamIsolationID)
+	}
+
+	v := ncdomain.ParseValue(name, jsonValue, resolveExtraIsolated, nil)
 	if v == nil {
 		return nil, fmt.Errorf("couldn't parse value")
 	}
@@ -375,8 +391,8 @@ func (b *Backend) jsonToDomain(name, jsonValue string) (*domain, error) {
 	return d, nil
 }
 
-func (b *Backend) resolveExtraName(name string) (jsonValue string, err error) {
-	return b.resolveName(name)
+func (b *Backend) resolveExtraName(name, streamIsolationID string) (jsonValue string, err error) {
+	return b.resolveName(name, streamIsolationID)
 }
 
 func (tx *btx) doUnderDomain(d *domain) (rrs []dns.RR, err error) {

@@ -14,7 +14,7 @@ import (
 	"github.com/miekg/dns"
 	"github.com/namecoin/ncdns/backend"
 	"github.com/namecoin/ncdns/namecoin"
-	"gopkg.in/hlandau/madns.v1"
+	"gopkg.in/hlandau/madns.v2"
 )
 
 var log, Log = xlog.New("ncdns.server")

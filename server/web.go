@@ -140,7 +140,7 @@ func (ws *webServer) handleLookup(rw http.ResponseWriter, req *http.Request) {
 	info.JSONValue = req.FormValue("value")
 	info.Value = strings.Trim(info.JSONValue, " \t\r\n")
 	if info.Value == "" {
-		info.Value, info.ExistenceError = ws.s.namecoinConn.Query(info.NamecoinName)
+		info.Value, info.ExistenceError = ws.s.namecoinConn.Query(info.NamecoinName, "")
 		if info.ExistenceError != nil {
 			return
 		}
@@ -170,7 +170,7 @@ func (ws *webServer) handleLookup(rw http.ResponseWriter, req *http.Request) {
 }
 
 func (ws *webServer) resolveFunc(name string) (string, error) {
-	return ws.s.namecoinConn.Query(name)
+	return ws.s.namecoinConn.Query(name, "")
 }
 
 func (ws *webServer) ServeHTTP(rw http.ResponseWriter, req *http.Request) {

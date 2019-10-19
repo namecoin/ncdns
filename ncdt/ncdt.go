@@ -41,7 +41,7 @@ func translateValue(k, v string) (string, error) {
 
 		f = os.NewFile(uintptr(n), "-")
 	} else if len(v) == 1 {
-		return conn.Query(k)
+		return conn.Query(k, "")
 	} else {
 		f, err = os.Open(v)
 	}

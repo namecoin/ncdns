@@ -1,7 +1,7 @@
 package util
 
 import "strings"
-import "gopkg.in/hlandau/madns.v1/merr"
+import "gopkg.in/hlandau/madns.v2/merr"
 import "fmt"
 import "regexp"
 import "net/mail"

@@ -55,7 +55,7 @@ func dumpName(item *extratypes.NameFilterItem, conn namecoin.Conn,
 	}
 
 	getNameFunc := func(k string) (string, error) {
-		return conn.Query(k)
+		return conn.Query(k, "")
 	}
 
 	var errors []error
