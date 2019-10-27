@@ -18,7 +18,7 @@ import "time"
 // Provides an abstract zone file for the Namecoin .bit TLD.
 type Backend struct {
 	//s *Server
-	nc namecoin.Conn
+	nc *namecoin.Client
 	// caches map keys are stream isolation ID's; items are of type *Domain
 	caches     map[string]*lru.Cache
 	cacheMutex sync.Mutex
@@ -29,7 +29,7 @@ var log, Log = xlog.New("ncdns.backend")
 
 // Backend configuration.
 type Config struct {
-	NamecoinConn namecoin.Conn
+	NamecoinConn *namecoin.Client
 
 	// Timeout (in milliseconds) for Namecoin RPC requests
 	NamecoinTimeout int
@@ -63,9 +63,6 @@ func New(cfg *Config) (backend *Backend, err error) {
 
 	b.cfg = *cfg
 	b.nc = b.cfg.NamecoinConn
-	//b.nc.Username = cfg.RPCUsername
-	//b.nc.Password = cfg.RPCPassword
-	//b.nc.Server = cfg.RPCAddress
 
 	b.caches = make(map[string]*lru.Cache)
 
@@ -355,13 +352,13 @@ func (b *Backend) resolveName(name, streamIsolationID string) (jsonValue string,
 		return fv, nil
 	}
 
-	// The btcjson package has quite a long timeout, far in excess of standard
+	// The rpcclient package has quite a long timeout, far in excess of standard
 	// DNS timeouts. We need to return an error response rapidly if we can't
 	// query the backend. Be generous with the timeout as responses from the
 	// Namecoin JSON-RPC seem sluggish sometimes.
 	result := make(chan struct{}, 1)
 	go func() {
-		jsonValue, err = b.nc.Query(name, streamIsolationID)
+		jsonValue, err = b.nc.NameQuery(name, streamIsolationID)
 		log.Errore(err, "failed to query namecoin")
 		result <- struct{}{}
 	}()

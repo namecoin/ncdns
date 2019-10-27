@@ -37,7 +37,7 @@ var zoneDataMux sync.Mutex
 // situation, .bit domains must stop resolving until the issue is corrected.
 // Forcing ncdns to exit is the least complex way to achieve this.
 
-func watchZone(conn namecoin.Conn) {
+func watchZone(conn *namecoin.Client) {
 	for {
 		var result bytes.Buffer
 
@@ -125,7 +125,7 @@ func profileInUse() bool {
 // Start starts 2 background threads that synchronize the blockchain's TLSA
 // records to a Firefox profile's cert_override.txt.  It accepts a connection
 // to access Namecoin Core, as well as a host suffix (usually "bit").
-func Start(conn namecoin.Conn, suffix string) error {
+func Start(conn *namecoin.Client, suffix string) error {
 	if syncEnableFlag.Value() {
 		go watchZone(conn)
 		go watchProfile(suffix)

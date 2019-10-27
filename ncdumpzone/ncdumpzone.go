@@ -8,7 +8,7 @@ import (
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
 
-	extratypes "github.com/hlandau/ncbtcjsontypes"
+	"github.com/namecoin/ncbtcjson"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdomain"
 	"github.com/namecoin/ncdns/rrtourl"
@@ -41,7 +41,7 @@ func dumpRR(rr dns.RR, dest io.Writer, format string) error {
 	return nil
 }
 
-func dumpName(item *extratypes.NameFilterItem, conn namecoin.Conn,
+func dumpName(item *ncbtcjson.NameShowResult, conn *namecoin.Client,
 	dest io.Writer, format string) error {
 	// The order in which name_scan returns results is seemingly rather
 	// random, so we can't stop when we see a non-d/ name, so just skip it.
@@ -55,7 +55,7 @@ func dumpName(item *extratypes.NameFilterItem, conn namecoin.Conn,
 	}
 
 	getNameFunc := func(k string) (string, error) {
-		return conn.Query(k, "")
+		return conn.NameQuery(k, "")
 	}
 
 	var errors []error
@@ -83,7 +83,7 @@ func dumpName(item *extratypes.NameFilterItem, conn namecoin.Conn,
 
 // Dump extracts all domain names from conn, formats them according to the
 // specified format, and writes the result to dest.
-func Dump(conn namecoin.Conn, dest io.Writer, format string) error {
+func Dump(conn *namecoin.Client, dest io.Writer, format string) error {
 	if format != "zonefile" && format != "firefox-override" &&
 		format != "url-list" {
 		return fmt.Errorf("Invalid \"format\" argument: %s", format)
@@ -93,7 +93,7 @@ func Dump(conn namecoin.Conn, dest io.Writer, format string) error {
 	continuing := 0
 
 	for {
-		results, err := conn.Scan(currentName, perCall)
+		results, err := conn.NameScan(currentName, perCall)
 		if err != nil {
 			return fmt.Errorf("scan: %s", err)
 		}
