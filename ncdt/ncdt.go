@@ -7,12 +7,14 @@ import "fmt"
 import "os"
 import "strconv"
 import "io/ioutil"
+import "github.com/namecoin/btcd/rpcclient"
 import "github.com/namecoin/ncdns/util"
 
 var rpchost = flag.String("rpchost", "", "Namecoin RPC host:port")
 var rpcuser = flag.String("rpcuser", "", "Namecoin RPC username")
 var rpcpass = flag.String("rpcpass", "", "Namecoin RPC password")
-var conn namecoin.Conn
+var rpccookiepath = flag.String("rpccookiepath", "", "Namecoin RPC cookie path (used if password is unspecified)")
+var conn *namecoin.Client
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "Usage: ncdt [options] <d/example> <JSON value> [<d/imported-example> <JSON value> ...]\n")
@@ -21,6 +23,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "  -rpchost=host:port     Namecoin RPC server address  } only required for RPC retrieval\n")
 	fmt.Fprintf(os.Stderr, "  -rpcuser=username      Namecoin RPC username        }\n")
 	fmt.Fprintf(os.Stderr, "  -rpcpass=password      Namecoin RPC password        }\n")
+	fmt.Fprintf(os.Stderr, "  -rpccookiepath=path    Namecoin RPC cookie path     }\n")
 	os.Exit(2)
 }
 
@@ -41,7 +44,7 @@ func translateValue(k, v string) (string, error) {
 
 		f = os.NewFile(uintptr(n), "-")
 	} else if len(v) == 1 {
-		return conn.Query(k, "")
+		return conn.NameQuery(k, "")
 	} else {
 		f, err = os.Open(v)
 	}
@@ -71,9 +74,26 @@ func main() {
 		usage()
 	}
 
-	conn.Username = *rpcuser
-	conn.Password = *rpcpass
-	conn.Server = *rpchost
+	// Connect to local namecoin core RPC server using HTTP POST mode.
+	connCfg := &rpcclient.ConnConfig{
+		Host:         *rpchost,
+		User:         *rpcuser,
+		Pass:         *rpcpass,
+		CookiePath:   *rpccookiepath,
+		HTTPPostMode: true, // Namecoin core only supports HTTP POST mode
+		DisableTLS:   true, // Namecoin core does not provide TLS by default
+	}
+
+	var err error
+
+	// Notice the notification parameter is nil since notifications are
+	// not supported in HTTP POST mode.
+	conn, err = namecoin.New(connCfg, nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating RPC client: %v\n", err)
+		os.Exit(1)
+	}
+	defer conn.Shutdown()
 
 	for i := 0; i+1 < len(args); i += 2 {
 		k := args[i]
@@ -83,7 +103,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		v, err := translateValue(k, v)
+		v, err = translateValue(k, v)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to translate value: %v\n", err)
 			os.Exit(1)
