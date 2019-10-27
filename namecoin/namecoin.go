@@ -1,12 +1,11 @@
 package namecoin
 
 import (
-	"fmt"
-
 	"github.com/namecoin/btcd/btcjson"
 	"github.com/namecoin/btcd/rpcclient"
 	"gopkg.in/hlandau/madns.v2/merr"
 
+	"github.com/namecoin/ncbtcjson"
 	"github.com/namecoin/ncrpcclient"
 )
 
@@ -28,12 +27,7 @@ func New(config *rpcclient.ConnConfig, ntfnHandlers *rpcclient.NotificationHandl
 // NameQuery returns the value of a name.  If the name doesn't exist, the error
 // returned will be merr.ErrNoSuchDomain.
 func (c *Client) NameQuery(name string, streamIsolationID string) (string, error) {
-	// TODO: Pass stream isolation ID to namecoind, and remove this error
-	if streamIsolationID != "" {
-		return "", fmt.Errorf("Stream isolation ID '%s' is not yet passed to namecoind", streamIsolationID)
-	}
-
-	nameData, err := c.NameShow(name)
+	nameData, err := c.NameShow(name, &ncbtcjson.NameShowOptions{StreamID: streamIsolationID})
 	if err != nil {
 		if jerr, ok := err.(*btcjson.RPCError); ok {
 			if jerr.Code == btcjson.ErrRPCWallet {
