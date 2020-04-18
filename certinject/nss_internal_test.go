@@ -13,7 +13,9 @@ func TestCheckCertExpired(t *testing.T) {
 
 	bytesDummy := []byte(`TEST DATA`)
 
-	injectCertFile(bytesDummy, testFilename)
+	if err := injectCertFile(bytesDummy, testFilename); err != nil {
+		t.Fatal(err)
+	}
 	defer os.Remove(testFilename)
 
 	info1, err := os.Stat(testFilename)
