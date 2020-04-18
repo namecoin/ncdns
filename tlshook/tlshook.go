@@ -38,8 +38,9 @@ func DomainValueHookTLS(qname string, ncv *ncdomain.Value) (err error) {
 						continue
 					}
 
-					// TODO: check return value
-					certinject.InjectCert(derBytes)
+					if err := certinject.InjectCert(derBytes); err != nil {
+						log.Info("Failed to inject certificate: ", err)
+					}
 
 				}
 
