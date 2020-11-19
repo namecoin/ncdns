@@ -9,8 +9,9 @@ go:
 
 notifications:
   irc:
+    if: repo = namecoin/ncdns
     channels:
-      - "chat.freenode.net#namecoin-dev"
+      - "irc.oftc.net#namecoin-dev"
     on_success: never
 
 addons:
