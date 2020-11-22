@@ -94,9 +94,13 @@ func TestDehydratedCertSignatureInvalid(t *testing.T) {
 		t.Error("Error rehydrating certificate:", err)
 	}
 
+	// Go 1.16+ will error here due to Golang issue #40458.
+	// Earlier Go versions won't notice.
 	derBytes, err := certdehydrate.FillRehydratedCertTemplate(*template, "www2.veclabs.bit")
 	if err != nil {
-		t.Error("Error filling domain into rehydrated certificate template:", err)
+		// The invalid sig was detected by Go 1.16+ like we want.  derBytes is
+		// nil, so we can't proceed, which is fine.
+		return
 	}
 
 	cert, err := x509.ParseCertificate(derBytes)
