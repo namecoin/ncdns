@@ -1,12 +1,12 @@
 package certdehydrate_test
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"reflect"
 	"testing"
 
 	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/x509-signature-splice/x509"
 )
 
 func TestDehydratedCertIdentityOperation(t *testing.T) {

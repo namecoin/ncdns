@@ -9,8 +9,9 @@ go:
 
 notifications:
   irc:
+    if: repo = namecoin/ncdns
     channels:
-      - "chat.freenode.net#namecoin-dev"
+      - "irc.oftc.net#namecoin-dev"
     on_success: never
 
 addons:
@@ -27,13 +28,6 @@ install:
   - if [[ "${NO_NAMECOIN_TLS}" = 1 ]]; then TAGS="no_namecoin_tls"; fi
   - if [[ "${NO_NAMECOIN_TLS}" = 0 ]]; then TAGS=""; fi
   - go get -tags "$TAGS" -d -v -t ./...
-  - X509_BRANCH=master
-  - if [[ "$(go version)" =~ go1.[5678] ]]; then X509_BRANCH=go1.6; fi
-  - if [[ "$(go version)" =~ go1.9 ]]; then X509_BRANCH=go1.9; fi
-  - if [[ "$(go version)" =~ go1.10 ]]; then X509_BRANCH=go1.10; fi
-  - if [[ "$(go version)" =~ go1.11 ]]; then X509_BRANCH=go1.11; fi
-  - if [[ "$(go version)" =~ go1.12 ]]; then X509_BRANCH=go1.12; fi
-  - pushd $(go env GOPATH)/src/github.com/namecoin/x509-signature-splice; git checkout $X509_BRANCH; popd
   - GOXSYS_BRANCH=master
   # goxsys bug for Go 1.11 and earlier: https://github.com/golang/go/issues/34742
   - if [[ "$(go version)" =~ go1.[56789] ]]; then GOXSYS_BRANCH=release-branch.go1.13; fi
@@ -44,7 +38,6 @@ install:
   - if [[ "$(go version)" =~ go1.[56789] ]]; then GOXNET_BRANCH=release-branch.go1.12; fi
   - if [[ "$(go version)" =~ go1.1[01] ]]; then GOXNET_BRANCH=release-branch.go1.12; fi
   - pushd $(go env GOPATH)/src/golang.org/x/net; git checkout $GOXNET_BRANCH; popd
-  - go generate -v github.com/namecoin/x509-signature-splice/...
   - go get -tags "$TAGS" -v -t ./...
   - env GOOS=windows GOARCH=amd64 go get -tags "$TAGS" -d -v -t ./...
 script:

@@ -3,6 +3,7 @@
 package ncdomain
 
 import (
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/namecoin/ncdns/certdehydrate"
 	"github.com/namecoin/ncdns/util"
-	"github.com/namecoin/x509-signature-splice/x509"
 )
 
 type Value struct {

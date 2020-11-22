@@ -23,7 +23,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	//"crypto/rsa"
-	//"crypto/x509"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/pem"
@@ -36,8 +36,6 @@ import (
 	"os"
 	//"strings"
 	"time"
-
-	"github.com/namecoin/x509-signature-splice/x509"
 )
 
 //var (
