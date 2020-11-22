@@ -90,7 +90,15 @@ gox -tags="$GOX_TAGS" -parallel=$GOX_PARA -cgo -osarch 'linux/386 linux/amd64' -
 RESULT1=$?
 
 # non-cgo crosscompile
-gox -tags="$GOX_TAGS" -parallel=$GOX_PARA -osarch 'darwin/386 darwin/amd64 linux/arm linux/arm64 linux/ppc64 linux/ppc64le freebsd/386 freebsd/amd64 freebsd/arm openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64 windows/386 windows/amd64' -output "$GOPATH/releasing/idist/ncdns-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" $REPOS
+# darwin/386 was removed in Go 1.15
+if [[ "$(go version)" =~ go1.[56789] ]]; then
+  GOX_OPTIONAL_TARGETS="darwin/386 "
+elif [[ "$(go version)" =~ go1.1[01234] ]]; then
+  GOX_OPTIONAL_TARGETS="darwin/386 "
+else
+  GOX_OPTIONAL_TARGETS=""
+fi
+gox -tags="$GOX_TAGS" -parallel=$GOX_PARA -osarch "${GOX_OPTIONAL_TARGETS}darwin/amd64 linux/arm linux/arm64 linux/ppc64 linux/ppc64le freebsd/386 freebsd/amd64 freebsd/arm openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64 windows/386 windows/amd64" -output "$GOPATH/releasing/idist/ncdns-$TRAVIS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" $REPOS
 RESULT2=$?
 
 echo cgo crosscompile exited with code $RESULT1
