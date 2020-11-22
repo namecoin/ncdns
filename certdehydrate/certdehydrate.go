@@ -31,7 +31,7 @@ type DehydratedCertificate struct {
 
 // SerialNumber calculates the certificate serial number according to the
 // Dehydrated TLS Certificates specification.
-func (dehydrated DehydratedCertificate) SerialNumber(name string) ([]byte, error) {
+func (dehydrated *DehydratedCertificate) SerialNumber(name string) ([]byte, error) {
 
 	nameHash := sha256.Sum256([]byte(name))
 
@@ -77,7 +77,7 @@ func (dehydrated DehydratedCertificate) SerialNumber(name string) ([]byte, error
 	return serialHash.Sum(nil)[0:19], nil
 }
 
-func (dehydrated DehydratedCertificate) String() string {
+func (dehydrated *DehydratedCertificate) String() string {
 	output := []interface{}{1, dehydrated.PubkeyB64, dehydrated.NotBeforeScaled, dehydrated.NotAfterScaled, dehydrated.SignatureAlgorithm, dehydrated.SignatureB64}
 	binOutput, _ := json.Marshal(output)
 	return string(binOutput)
