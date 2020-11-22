@@ -24,7 +24,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	//"crypto/x509"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/pem"
@@ -38,7 +38,6 @@ import (
 	"time"
 
 	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/x509-signature-splice/x509"
 )
 
 var (

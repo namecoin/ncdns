@@ -2,7 +2,9 @@ package certdehydrate
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
 	"encoding/binary"
@@ -10,9 +12,9 @@ import (
 	"fmt"
 	"math/big"
 	"time"
-)
 
-import "github.com/namecoin/x509-signature-splice/x509"
+	"github.com/namecoin/splicesign"
+)
 
 // A DehydratedCertificate represents the (nearly) minimal set of data required
 // to deterministically construct a valid x509 certificate when combined with a
@@ -252,7 +254,13 @@ func FillRehydratedCertTemplate(template x509.Certificate, name string) ([]byte,
 	}
 	template.SerialNumber.SetBytes(serialNumberBytes)
 
-	derBytes, err := x509.CreateCertificateWithSplicedSignature(&template, &template)
+	pub := template.PublicKey
+	priv := &splicesign.SpliceSigner{
+		PublicKey: pub,
+		Signature: template.Signature,
+	}
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv)
 	if err != nil {
 		return nil, fmt.Errorf("Error splicing signature: %s", err)
 	}
