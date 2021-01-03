@@ -90,28 +90,6 @@ task:
     - CGO_ENABLED=1 gox -tags="$GOX_TAGS" -parallel=8 -osarch 'linux/386 linux/amd64 linux/arm linux/arm64 linux/ppc64le' -output "$GOPATH/releasing/idist/$CIRRUS_REPO_NAME-$CIRRUS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" github.com/$CIRRUS_REPO_FULL_NAME/...
     - CGO_ENABLED=0 gox -tags="$GOX_TAGS" -parallel=8 -osarch 'darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/ppc64 openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64 windows/386 windows/amd64' -output "$GOPATH/releasing/idist/$CIRRUS_REPO_NAME-$CIRRUS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" github.com/$CIRRUS_REPO_FULL_NAME/...
     - mv $GOPATH/releasing/idist ./idist
-  upload_script:
-    - tar -caf idist.tar.gz idist
-    - curl -s -X POST --data-binary @idist.tar.gz http://$CIRRUS_HTTP_CACHE_HOST/cross_compile_bin_go_latest
-  env:
-    GOX_TAGS: ""
-    GO_VERSION: latest
-
-task:
-  # Cirrus Artifact Upload
-  name: Artifact Upload
-  container:
-    image: fedora:latest
-    cpu: 1
-    memory: 1G
-  depends_on:
-    - Go Lint
-    - ShellCheck
-    - Unit Tests
-    - Cross-Compile
-  install_script:
-    - curl -o idist.tar.gz http://$CIRRUS_HTTP_CACHE_HOST/cross_compile_bin_go_latest
-    - tar -xaf idist.tar.gz
   dist_script:
     - bash "testdata/dist.bash"
   binaries_artifacts:
