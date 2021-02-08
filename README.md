@@ -96,9 +96,13 @@ Option A: Using Go build commands (works on any platform):
    familar with Go, setting it to the path to an empty directory will suffice.
    The directory will be filled with build files.)
 
-2. Run `go get -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
-   retrieved automatically, and ncdns will be built. The binaries will be at
-   $GOPATH/bin/ncdns..
+2. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
+   retrieved automatically.
+
+3. Run `go generate github.com/namecoin/x509_compressed/...`.  The compressed public key patch will be applied.
+
+4. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at
+   $GOPATH/bin/ncdns.
 
 Option B: Using Makefile (non-Windows platforms):
 
