@@ -252,6 +252,19 @@ func (tx *btx) doMetaDomain() (rrs []dns.RR, err error) {
 				A: ip,
 			},
 		}
+	case "aia":
+		// TODO: Make AIA address configurable (currently hardcoded to "this.x--nmc.bit")
+		rrs = []dns.RR{
+			&dns.CNAME{
+				Hdr: dns.RR_Header{
+					Name:   dns.Fqdn("aia." + tx.basename + "." + tx.rootname),
+					Ttl:    86400,
+					Class:  dns.ClassINET,
+					Rrtype: dns.TypeCNAME,
+				},
+				Target: dns.Fqdn("this." + tx.basename + "." + tx.rootname),
+			},
+		}
 
 	default:
 	}
