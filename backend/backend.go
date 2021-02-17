@@ -252,6 +252,19 @@ func (tx *btx) doMetaDomain() (rrs []dns.RR, err error) {
 				A: ip,
 			},
 		}
+	case "aia":
+		// TODO: Make AIA address configurable (currently hardcoded to "this.x--nmc.bit")
+		rrs = []dns.RR{
+			&dns.CNAME{
+				Hdr: dns.RR_Header{
+					Name:   dns.Fqdn("aia." + tx.basename + "." + tx.rootname),
+					Ttl:    86400,
+					Class:  dns.ClassINET,
+					Rrtype: dns.TypeCNAME,
+				},
+				Target: dns.Fqdn("this." + tx.basename + "." + tx.rootname),
+			},
+		}
 
 	default:
 	}
@@ -283,22 +296,7 @@ type domain struct {
 	ncv *ncdomain.Value
 }
 
-func (b *Backend) getNamecoinEntry(name, streamIsolationID string) (*domain, error) {
-	d := b.getNamecoinEntryCache(name, streamIsolationID)
-	if d != nil {
-		return d, nil
-	}
-
-	d, err := b.getNamecoinEntryLL(name, streamIsolationID)
-	if err != nil {
-		return nil, err
-	}
-
-	b.addNamecoinEntryToCache(name, d, streamIsolationID)
-	return d, nil
-}
-
-func (b *Backend) getNamecoinEntryCache(name, streamIsolationID string) *domain {
+func (b *Backend) resolveNameCache(name, streamIsolationID string) *string {
 	b.cacheMutex.Lock()
 	defer b.cacheMutex.Unlock()
 
@@ -308,14 +306,15 @@ func (b *Backend) getNamecoinEntryCache(name, streamIsolationID string) *domain 
 	}
 
 	if dd, ok := cache.Get(name); ok {
-		d := dd.(*domain)
-		return d
+		v := dd.(*string)
+
+		return v
 	}
 
 	return nil
 }
 
-func (b *Backend) addNamecoinEntryToCache(name string, d *domain, streamIsolationID string) {
+func (b *Backend) addNamecoinJSONToCache(name string, jsonValue *string, streamIsolationID string) {
 	b.cacheMutex.Lock()
 	defer b.cacheMutex.Unlock()
 
@@ -327,16 +326,25 @@ func (b *Backend) addNamecoinEntryToCache(name string, d *domain, streamIsolatio
 		cache = b.caches[streamIsolationID]
 	}
 
-	cache.Add(name, d)
+	cache.Add(name, jsonValue)
 }
 
-func (b *Backend) getNamecoinEntryLL(name, streamIsolationID string) (*domain, error) {
-	v, err := b.resolveName(name, streamIsolationID)
-	if err != nil {
-		return nil, err
+func (b *Backend) getNamecoinEntry(name, streamIsolationID string) (*domain, error) {
+	// Try the cache first
+	v := b.resolveNameCache(name, streamIsolationID)
+
+	// If the cache misses, resolve it via namecoind
+	if v == nil {
+		vv, err := b.resolveName(name, streamIsolationID)
+		if err != nil {
+			return nil, err
+		}
+
+		v = &vv
+		b.addNamecoinJSONToCache(name, v, streamIsolationID)
 	}
 
-	d, err := b.jsonToDomain(name, v, streamIsolationID)
+	d, err := b.jsonToDomain(name, *v, streamIsolationID)
 	if err != nil {
 		return nil, err
 	}
