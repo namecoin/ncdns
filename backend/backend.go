@@ -307,6 +307,7 @@ func (b *Backend) resolveNameCache(name, streamIsolationID string) *string {
 
 	if dd, ok := cache.Get(name); ok {
 		v := dd.(*string)
+
 		return v
 	}
 
