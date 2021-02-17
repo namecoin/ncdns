@@ -86,7 +86,7 @@ Prerequisites:
 
 1. Ensure you have the Go tools installed.
 
-2. If using Linux, ensure you have the `libcap` development headers
+2. If using Linux, ensure you have `gcc` and the `libcap` development headers
    installed. (Most distributions will have a package called `libcap-dev` or
    similar.)
 
@@ -99,7 +99,7 @@ Option A: Using Go build commands (works on any platform):
 2. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
    retrieved automatically.
 
-3. Run `go generate github.com/namecoin/x509_compressed/...`.  The compressed public key patch will be applied.
+3. Run `go generate github.com/namecoin/x509-compressed/...`.  The compressed public key patch will be applied.
 
 4. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at
    $GOPATH/bin/ncdns.
