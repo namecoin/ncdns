@@ -90,21 +90,37 @@ Prerequisites:
    installed. (Most distributions will have a package called `libcap-dev` or
    similar.)
 
-Option A: Using Go build commands (works on any platform):
+Option A: Using Go build commands without Go modules (works on any platform with Bash; only Go 1.15-1.16.x; will not work on Go 1.17+):
 
-1. Ensure you have the GOPATH environment variable set. (For those not
+1. Ensure you have the `GOPATH` environment variable set. (For those not
    familar with Go, setting it to the path to an empty directory will suffice.
    The directory will be filled with build files.)
 
-2. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
+2. Run `export GO111MODULE=off` to disable Go modules.
+
+3. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
    retrieved automatically.
 
-3. Run `go generate github.com/namecoin/x509_compressed/...`.  The compressed public key patch will be applied.
+4. Run `go generate github.com/namecoin/x509-compressed/...`.  The compressed public key patch will be applied.
 
-4. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at
-   $GOPATH/bin/ncdns.
+5. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
 
-Option B: Using Makefile (non-Windows platforms):
+Option B: Using Go build commands with Go modules (works on any platform with Bash; Go 1.15+:
+
+1. Install [x509-compressed](https://github.com/namecoin/x509-compressed) according to its "with Go modules" instructions.  Clone ncdns to a sibling directory of x509-compressed.
+
+2. Run the following in the ncdns directory to set up Go modules:
+   
+   ~~~
+   go mod init
+   go mod tidy
+   go mod edit -replace github.com/namecoin/x509-compressed=../x509-compressed
+   go mod tidy
+   ~~~
+
+3. Run `go install ./...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
+
+Option C: Using Makefile (non-Windows platforms):
 
 1. Run `make`. The source repository will be retrieved via `go get`
    automatically.
