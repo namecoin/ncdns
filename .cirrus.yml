@@ -130,12 +130,7 @@ task:
     - dpkg --add-architecture ppc64el
     - apt-get update
     - apt-get install -y gcc-multilib libcap-dev libc6-dev:i386 libcap-dev:i386 libc6-dev:armhf libcap-dev:armhf libc6-dev:arm64 libcap-dev:arm64 libc6-dev:ppc64el libcap-dev:ppc64el
-    # Upstream mitchellh/gox seems abandoned; we apply a pending PR.
-    - cd /tmp/
-    - git clone https://github.com/aslakhellesoy/gox
-    - cd gox
-    - git checkout db6184738b77fbd5089e5fa1112177f391c91b24
-    - GO111MODULE=on go install .
+    - go get github.com/mitchellh/gox
   path_script:
     - source testdata/move_to_gopath.bash
   matrix:
@@ -166,10 +161,7 @@ task:
     - rm -rf idist
     - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
     - CGO_ENABLED=1 gox -tags="$GOX_TAGS" -parallel=8 -osarch 'linux/386 linux/amd64 linux/arm linux/arm64 linux/ppc64le' -output "$GOPATH/releasing/idist/$CIRRUS_REPO_NAME-$CIRRUS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" ./...
-    - CGO_ENABLED=0 gox -tags="$GOX_TAGS" -parallel=8 -osarch 'darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/ppc64 openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64' -output "$GOPATH/releasing/idist/$CIRRUS_REPO_NAME-$CIRRUS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" ./...
-    # Disable ASLR/PIE to work around upstream bug in btcd's Windows service
-    # library, see https://github.com/hlandau/service/issues/14
-    - CGO_ENABLED=0 gox -buildmode=exe -tags="$GOX_TAGS" -parallel=8 -osarch 'windows/386 windows/amd64' -output "$GOPATH/releasing/idist/$CIRRUS_REPO_NAME-$CIRRUS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" ./...
+    - CGO_ENABLED=0 gox -tags="$GOX_TAGS" -parallel=8 -osarch 'darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm linux/ppc64 openbsd/386 openbsd/amd64 netbsd/386 netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64 windows/386 windows/amd64' -output "$GOPATH/releasing/idist/$CIRRUS_REPO_NAME-$CIRRUS_TAG-{{.OS}}_{{.Arch}}/bin/{{.Dir}}" ./...
   dist_script:
     - mv $GOPATH/releasing/idist ./idist
     - bash "testdata/dist.bash"
