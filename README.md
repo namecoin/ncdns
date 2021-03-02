@@ -103,7 +103,7 @@ Option A: Using Go build commands without Go modules (works on any platform with
 
 4. Run `go generate github.com/namecoin/x509-compressed/...`.  The compressed public key patch will be applied.
 
-5. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built.  If you're building for a Windows target, you need to add the `-buildmode=exe` flag, which disables ASLR/PIE to work around an upstream bug.  The binaries will be at `$GOPATH/bin/ncdns`.
+5. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
 
 Option B: Using Go build commands with Go modules (works on any platform with Bash; Go 1.15+:
 
@@ -118,7 +118,7 @@ Option B: Using Go build commands with Go modules (works on any platform with Ba
    go mod tidy
    ~~~
 
-3. Run `go install ./...`.  If you're building for a Windows target, you need to add the `-buildmode=exe` flag, which disables ASLR/PIE to work around an upstream bug.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
+3. Run `go install ./...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
 
 Option C: Using Makefile (non-Windows platforms):
 
