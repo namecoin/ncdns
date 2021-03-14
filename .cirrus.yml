@@ -44,7 +44,7 @@ task:
         GOLANGCI_ARGS: "--new-from-rev=HEAD~"
     - name: Go Lint $GOOS Mandatory
       env:
-        GOLANGCI_ARGS: "--disable=cyclop,deadcode,errcheck,errorlint,exhaustivestruct,forbidigo,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofumpt,goimports,golint,gosec,gosimple,ineffassign,lll,maligned,nakedret,nestif,nlreturn,nolintlint,paralleltest,revive,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,whitespace,wrapcheck,wsl"
+        GOLANGCI_ARGS: "--disable=cyclop,deadcode,errcheck,errorlint,exhaustivestruct,forbidigo,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofumpt,goimports,golint,gosec,gosimple,ineffassign,lll,maligned,nakedret,nestif,nlreturn,paralleltest,revive,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,whitespace,wrapcheck,wsl"
     - name: Go Lint $GOOS
       env:
         GOLANGCI_ARGS: ""
