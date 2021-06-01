@@ -1,0 +1,7 @@
+linters-settings:
+  goimports:
+    local-prefixes: "github.com/namecoin"
+  gomoddirectives:
+    replace-local: true
+    replace-allow-list:
+      - "github.com/namecoin/x509-compressed"
