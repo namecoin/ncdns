@@ -14,7 +14,7 @@ task:
   matrix:
     - env:
         GO111MODULE: "off"
-        GOLANGCI_MODULES_ARGS: "--disable=gomodguard"
+        GOLANGCI_MODULES_ARGS: "--disable=gomoddirectives,gomodguard"
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
