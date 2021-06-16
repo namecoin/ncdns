@@ -14,12 +14,15 @@ task:
   matrix:
     - env:
         GO111MODULE: "off"
+        GOLANGCI_MODULES_ARGS: "--disable=gomodguard"
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
+    - env:
+        GOLANGCI_MODULES_ARGS: ""
+      x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
@@ -37,7 +40,7 @@ task:
         - go mod tidy
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
-    - golangci-lint run --enable-all --disable gochecknoglobals,gomnd,interfacer $GOLANGCI_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
+    - golangci-lint run --enable-all --disable gochecknoglobals,gomnd,interfacer $GOLANGCI_ARGS $GOLANGCI_MODULES_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
   matrix:
     - name: Go Lint $GOOS New
       env:
