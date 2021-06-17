@@ -75,7 +75,7 @@ task:
   lint_script: bash testdata/shellcheck.bash
 
 task:
-  name: Unit Tests Go $GO_VERSION
+  name: "Unit Tests Go $GO_VERSION$MODULES_NAME"
   alias: Unit Tests
   container:
     image: golang:$GO_VERSION
@@ -87,12 +87,15 @@ task:
   matrix:
     - env:
         GO111MODULE: "off"
+        MODULES_NAME: " Modules Off"
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
+    - env:
+        MODULES_NAME: ""
+      x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
@@ -121,7 +124,7 @@ task:
     GO_VERSION: latest
 
 task:
-  name: Cross-Compile Go $GO_VERSION
+  name: "Cross-Compile Go $GO_VERSION$MODULES_NAME"
   alias: Cross-Compile
   container:
     image: golang:$GO_VERSION
@@ -141,12 +144,15 @@ task:
   matrix:
     - env:
         GO111MODULE: "off"
+        MODULES_NAME: " Modules Off"
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
+    - env:
+        MODULES_NAME: ""
+      x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
