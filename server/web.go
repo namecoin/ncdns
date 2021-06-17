@@ -197,8 +197,7 @@ func clearAllCookies(rw http.ResponseWriter, req *http.Request) {
 }
 
 func webStart(listenAddr string, server *Server) error {
-	err := server.initTemplates()
-	if err != nil {
+	if err := server.initTemplates(); err != nil {
 		return err
 	}
 
