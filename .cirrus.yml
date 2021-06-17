@@ -75,10 +75,8 @@ task:
   lint_script: bash testdata/shellcheck.bash
 
 task:
-  name: "Unit Tests Go $GO_VERSION$MODULES_NAME"
+  name: "Unit Tests $CONTAINER_NAME$MODULES_NAME"
   alias: Unit Tests
-  container:
-    image: golang:$GO_VERSION
   install_script:
     - apt-get update
     - apt-get install -y libcap-dev
@@ -115,13 +113,18 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/hlandau
         - cd $(go env GOPATH)/src/github.com/hlandau
         - git clone https://github.com/hlandau/nctestsuite.git
+  matrix:
+    - env:
+        GO_VERSION: latest
+        CONTAINER_NAME: "Go $GO_VERSION"
+      container:
+        image: golang:$GO_VERSION
   test_script:
     - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
     - go install -tags "$GOX_TAGS" -v ./...
     - go test -tags "$GOX_TAGS" -v github.com/$CIRRUS_REPO_FULL_NAME/...
   env:
     GOX_TAGS: ""
-    GO_VERSION: latest
 
 task:
   name: "Cross-Compile Go $GO_VERSION$MODULES_NAME"
