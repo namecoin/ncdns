@@ -14,12 +14,17 @@ task:
   matrix:
     - env:
         GO111MODULE: "off"
+        GOLANGCI_MODULES_ARGS: "--disable=gomoddirectives,gomodguard"
+        MODULES_NAME: " Modules Off"
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
+    - env:
+        GOLANGCI_MODULES_ARGS: ""
+        MODULES_NAME: ""
+      x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
@@ -37,15 +42,15 @@ task:
         - go mod tidy
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
-    - golangci-lint run --enable-all --disable gochecknoglobals,gomnd $GOLANGCI_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
+    - golangci-lint run --enable-all --disable gochecknoglobals,gomnd,interfacer $GOLANGCI_ARGS $GOLANGCI_MODULES_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
   matrix:
-    - name: Go Lint $GOOS New
+    - name: "Go Lint $GOOS New$MODULES_NAME"
       env:
         GOLANGCI_ARGS: "--new-from-rev=HEAD~"
-    - name: Go Lint $GOOS Mandatory
+    - name: "Go Lint $GOOS Mandatory$MODULES_NAME"
       env:
         GOLANGCI_ARGS: "--disable=cyclop,deadcode,errcheck,errorlint,exhaustivestruct,forbidigo,forcetypeassert,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofumpt,goimports,golint,gosec,gosimple,govet,ineffassign,lll,maligned,nakedret,nestif,nilerr,nlreturn,paralleltest,revive,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,wastedassign,whitespace,wrapcheck,wsl"
-    - name: Go Lint $GOOS
+    - name: "Go Lint $GOOS$MODULES_NAME"
       env:
         GOLANGCI_ARGS: ""
       allow_failures: true
@@ -70,7 +75,7 @@ task:
   lint_script: bash testdata/shellcheck.bash
 
 task:
-  name: Unit Tests Go $GO_VERSION
+  name: "Unit Tests Go $GO_VERSION$MODULES_NAME"
   alias: Unit Tests
   container:
     image: golang:$GO_VERSION
@@ -82,12 +87,15 @@ task:
   matrix:
     - env:
         GO111MODULE: "off"
+        MODULES_NAME: " Modules Off"
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
+    - env:
+        MODULES_NAME: ""
+      x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
@@ -116,7 +124,7 @@ task:
     GO_VERSION: latest
 
 task:
-  name: Cross-Compile Go $GO_VERSION
+  name: "Cross-Compile Go $GO_VERSION$MODULES_NAME"
   alias: Cross-Compile
   container:
     image: golang:$GO_VERSION
@@ -136,12 +144,15 @@ task:
   matrix:
     - env:
         GO111MODULE: "off"
+        MODULES_NAME: " Modules Off"
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - x509_script:
+    - env:
+        MODULES_NAME: ""
+      x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
