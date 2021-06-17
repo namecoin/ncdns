@@ -77,9 +77,21 @@ task:
 task:
   name: "Unit Tests $CONTAINER_NAME$MODULES_NAME"
   alias: Unit Tests
-  install_script:
-    - apt-get update
-    - apt-get install -y libcap-dev
+  matrix:
+    - env:
+        GO_VERSION: latest
+        CONTAINER_NAME: "Go $GO_VERSION"
+      container:
+        image: golang:$GO_VERSION
+      install_script:
+        - apt-get update
+        - apt-get install -y libcap-dev
+    - env:
+        CONTAINER_NAME: "Fedora latest"
+      container:
+        image: fedora:latest
+      install_script:
+        - dnf install -y golang libcap-devel
   path_script:
     - source testdata/move_to_gopath.bash
   matrix:
@@ -113,12 +125,6 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/hlandau
         - cd $(go env GOPATH)/src/github.com/hlandau
         - git clone https://github.com/hlandau/nctestsuite.git
-  matrix:
-    - env:
-        GO_VERSION: latest
-        CONTAINER_NAME: "Go $GO_VERSION"
-      container:
-        image: golang:$GO_VERSION
   test_script:
     - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
     - go install -tags "$GOX_TAGS" -v ./...
