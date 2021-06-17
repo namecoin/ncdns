@@ -113,8 +113,7 @@ Option B: Using Go build commands with Go modules (works on any platform with Ba
    
    ~~~
    go mod init
-   go mod tidy
-   go mod edit -replace github.com/namecoin/x509-compressed=../x509-compressed
+   go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest -replace github.com/namecoin/x509-compressed=../x509-compressed
    go mod tidy
    ~~~
 

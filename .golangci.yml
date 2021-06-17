@@ -5,3 +5,4 @@ linters-settings:
     replace-local: true
     replace-allow-list:
       - "github.com/namecoin/x509-compressed"
+      - "github.com/coreos/go-systemd"
