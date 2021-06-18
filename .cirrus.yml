@@ -29,14 +29,14 @@ task:
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
         - cd x509-compressed
-        - go mod init
+        - go mod init github.com/namecoin/x509-compressed
         - go mod tidy
         - go generate ./...
         - go mod tidy
         - go install -v ./...
       fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod init
+        - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest -replace github.com/namecoin/x509-compressed=../x509-compressed
         - go mod tidy
   lint_script:
@@ -109,14 +109,14 @@ task:
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
         - cd x509-compressed
-        - go mod init
+        - go mod init github.com/namecoin/x509-compressed
         - go mod tidy
         - go generate ./...
         - go mod tidy
         - go install -v ./...
       fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod init
+        - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest -replace github.com/namecoin/x509-compressed=../x509-compressed
         - go mod tidy
         # Get the test suite
@@ -165,14 +165,14 @@ task:
         - cd ../
         - git clone https://github.com/namecoin/x509-compressed.git
         - cd x509-compressed
-        - go mod init
+        - go mod init github.com/namecoin/x509-compressed
         - go mod tidy
         - go generate ./...
         - go mod tidy
         - go install -v ./...
       fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod init
+        - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest -replace github.com/namecoin/x509-compressed=../x509-compressed
         - go mod tidy
   build_script:
