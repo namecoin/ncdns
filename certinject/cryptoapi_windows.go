@@ -18,7 +18,7 @@ const cryptoApiCertStoreRegistryKey = `SOFTWARE\Microsoft\EnterpriseCertificates
 const cryptoApiMagicName = "Namecoin"
 const cryptoApiMagicValue = 1
 
-func injectCertCryptoApi(derBytes []byte) {
+func injectCertCryptoApi(derBytes []byte) error {
 
 	// Format documentation of Microsoft's "Certificate Registry Blob":
 
@@ -74,7 +74,7 @@ func injectCertCryptoApi(derBytes []byte) {
 	certStoreKey, err := registry.OpenKey(cryptoApiCertStoreRegistryBase, cryptoApiCertStoreRegistryKey, registry.ALL_ACCESS)
 	if err != nil {
 		log.Errorf("Couldn't open cert store: %s", err)
-		return
+		return err
 	}
 	defer certStoreKey.Close()
 
@@ -96,7 +96,7 @@ func injectCertCryptoApi(derBytes []byte) {
 	certKey, _, err := registry.CreateKey(certStoreKey, fingerprintHexUpper, registry.ALL_ACCESS)
 	if err != nil {
 		log.Errorf("Couldn't create registry key for certificate: %s", err)
-		return
+		return err
 	}
 	defer certKey.Close()
 
@@ -108,25 +108,26 @@ func injectCertCryptoApi(derBytes []byte) {
 	err = certKey.SetDWordValue(cryptoApiMagicName, cryptoApiMagicValue)
 	if err != nil {
 		log.Errorf("Couldn't set magic registry value for certificate: %s", err)
-		return
+		return err
 	}
 
 	// Create the registry value which holds the certificate.
 	err = certKey.SetBinaryValue("Blob", certBlob)
 	if err != nil {
 		log.Errorf("Couldn't set blob registry value for certificate: %s", err)
-		return
+		return err
 	}
 
+	return nil
 }
 
-func cleanCertsCryptoApi() {
+func cleanCertsCryptoApi() error {
 
 	// Open up the cert store.
 	certStoreKey, err := registry.OpenKey(cryptoApiCertStoreRegistryBase, cryptoApiCertStoreRegistryKey, registry.ALL_ACCESS)
 	if err != nil {
 		log.Errorf("Couldn't open cert store: %s", err)
-		return
+		return err
 	}
 	defer certStoreKey.Close()
 
@@ -134,7 +135,7 @@ func cleanCertsCryptoApi() {
 	subKeys, err := certStoreKey.ReadSubKeyNames(0)
 	if err != nil {
 		log.Errorf("Couldn't list certs in cert store: %s", err)
-		return
+		return err
 	}
 
 	// for all certs in the cert store
@@ -144,7 +145,7 @@ func cleanCertsCryptoApi() {
 		expired, err := checkCertExpiredCryptoApi(certStoreKey, subKeyName)
 		if err != nil {
 			log.Errorf("Couldn't check if cert is expired: %s", err)
-			return
+			return err
 		}
 
 		// delete the cert if it's expired
@@ -153,6 +154,7 @@ func cleanCertsCryptoApi() {
 		}
 
 	}
+	return nil
 
 }
 

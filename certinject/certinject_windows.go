@@ -1,6 +1,8 @@
 package certinject
 
 import (
+	"fmt"
+
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 )
 
@@ -20,24 +22,37 @@ var (
 )
 
 // InjectCert injects the given cert into all configured trust stores.
-func InjectCert(derBytes []byte) {
-
+func InjectCert(derBytes []byte) error {
+	if !cryptoApiFlag.Value() && !nssFlag.Value() {
+		return fmt.Errorf("no trusted store chosen, did you mean to use %q or %q flags?", cryptoApiFlag.CfName(), nssFlag.CfName())
+	}
 	if cryptoApiFlag.Value() {
-		injectCertCryptoApi(derBytes)
+		if err := injectCertCryptoApi(derBytes); err != nil {
+			return err
+		}
 	}
 	if nssFlag.Value() {
-		injectCertNss(derBytes)
+		if err := injectCertNss(derBytes); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // CleanCerts cleans expired certs from all configured trust stores.
-func CleanCerts() {
-
+func CleanCerts() error {
+	if !cryptoApiFlag.Value() && !nssFlag.Value() {
+		return fmt.Errorf("no trusted store chosen, did you mean to use %q or %q flags?", cryptoApiFlag.CfName(), nssFlag.CfName())
+	}
 	if cryptoApiFlag.Value() {
-		cleanCertsCryptoApi()
+		if err := cleanCertsCryptoApi(); err != nil {
+			return err
+		}
 	}
 	if nssFlag.Value() {
-		cleanCertsNss()
+		if err := cleanCertsNss(); err != nil {
+			return err
+		}
 	}
-
+	return nil
 }
