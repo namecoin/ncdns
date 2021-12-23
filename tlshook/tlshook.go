@@ -5,8 +5,8 @@ package tlshook
 
 import (
 	"github.com/hlandau/xlog"
+	"github.com/namecoin/certinject"
 	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/ncdns/certinject"
 	"github.com/namecoin/ncdns/ncdomain"
 )
 

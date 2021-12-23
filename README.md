@@ -101,23 +101,29 @@ Option A: Using Go build commands without Go modules (works on any platform with
 3. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
    retrieved automatically.
 
-4. Run `go generate github.com/namecoin/x509-compressed/...`.  The compressed public key patch will be applied.
+4. Run `go generate github.com/namecoin/certinject/...`.  The ReactOS property list will be parsed.
 
-5. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
+5. Run `go generate github.com/namecoin/x509-compressed/...`.  The compressed public key patch will be applied.
+
+6. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
 
 Option B: Using Go build commands with Go modules (works on any platform with Bash; Go 1.15+:
 
-1. Install [x509-compressed](https://github.com/namecoin/x509-compressed) according to its "with Go modules" instructions.  Clone ncdns to a sibling directory of x509-compressed.
+1. Clone [certinject](https://github.com/namecoin/certinject), [x509-compressed](https://github.com/namecoin/x509-compressed), and ncdns to sibling directories.
 
-2. Run the following in the ncdns directory to set up Go modules:
+2. Install `certinject` according to its instructions.
+
+3. Install `x509-compressed` according to its "with Go modules" instructions.
+
+4. Run the following in the ncdns directory to set up Go modules:
    
    ~~~
    go mod init github.com/namecoin/ncdns
-   go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest -replace github.com/namecoin/x509-compressed=../x509-compressed
+   go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest -replace github.com/namecoin/certinject=../certinject -replace github.com/namecoin/x509-compressed=../x509-compressed
    go mod tidy
    ~~~
 
-3. Run `go install ./...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
+5. Run `go install ./...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
 
 Option C: Using Makefile (non-Windows platforms):
 
