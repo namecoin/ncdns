@@ -6,3 +6,5 @@ linters-settings:
     replace-allow-list:
       - "github.com/namecoin/x509-compressed"
       - "github.com/coreos/go-systemd"
+  varnamelen:
+    ignore-type-assert-ok: true

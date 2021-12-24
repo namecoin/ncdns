@@ -68,20 +68,20 @@ func SplitDomainByFloatingAnchor(qname, anchor string) (subname, basename, rootn
 		return
 	}
 
-	for i := len(parts) - 1; i >= 0; i-- {
-		v := parts[i]
+	for partIndex := len(parts) - 1; partIndex >= 0; partIndex-- {
+		v := parts[partIndex]
 
 		// scanning for rootname
 		if v == anchor {
-			if i == 0 {
-				// i is alreay zero, so we have something like bit.x.y.z.
+			if partIndex == 0 {
+				// partIndex is already zero, so we have something like bit.x.y.z.
 				rootname = qname
 				return
 			}
 
-			rootname = strings.Join(parts[i:], ".")
-			basename = parts[i-1]
-			subname = strings.Join(parts[0:i-1], ".")
+			rootname = strings.Join(parts[partIndex:], ".")
+			basename = parts[partIndex-1]
+			subname = strings.Join(parts[0:partIndex-1], ".")
 			return
 		}
 	}
