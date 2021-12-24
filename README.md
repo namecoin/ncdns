@@ -28,19 +28,9 @@ Using ncdns with a recursive resolver
 -------------------------------------
 Of course the daemon can also be used simply as an authoritative nameserver for
 bit. directly. One way to do this is to run a recursive resolver (such as
-Unbound) and configure it to serve the zone as a 'stub zone'. Here is an example
-unbound configuration:
+Unbound) and configure it to serve the zone as a 'stub zone'. An example Unbound configuration file `ncdns.conf` is in `_doc/unbound`.
 
-    server:
-      do-not-query-localhost: no
-    stub-zone:
-      name: bit.
-      stub-addr: 127.0.0.1@1153
-
-If you don't want to use DNSSEC, also add:
-
-    server:
-      domain-insecure: bit.
+If you don't want to use DNSSEC, also add `ncdns-dnssec-off.conf` to Unbound's configuration.
 
 If you do want to use DNSSEC, see the instructions below.
 
@@ -71,13 +61,7 @@ if you want to use the key as a trust anchor with a recursive resolver such as
 unbound, you should specify `bit`.)
 
 If using Unbound as a recursive resolver, you should add the KSK's public key file
-as a trust anchor to unbound like so:
-
-    server:
-      trust-anchor-file: "/etc/unbound/keys/bit.key"
-
-`bit.key` should be the file containing the KSK DNSKEY (or DS) which ncdns is
-configured to use.
+as a trust anchor to unbound, as in `ncdns-dnssec-on.conf` in `_doc/unbound`.
 
 Building
 --------
@@ -139,7 +123,7 @@ ncdns uses a configuration file which is looked for at `../etc/ncdns.conf`
 this and all options on the command line. An annotated example configuration
 file `ncdns.conf.example` is available in doc.
 
-You will need to setup a `namecoind`, `namecoin-qt` or compatible Namecoin node
+You will need to setup a `namecoind`, `namecoin-qt`, `electrum-nmc`, or compatible Namecoin node
 and enable the JSON-RPC interface. You will then need to provide `ncdns` with
 the address of this interface and any necessary username and password via the
 configuration file.
@@ -147,9 +131,9 @@ configuration file.
 If you only want to resolve .bit names yourself, here is a suggested setup on
 Linux:
 
-  - Install `namecoind` (or `namecoin-qt`) and set it to start automatically
+  - Install `namecoind` (or `namecoin-qt` or `electrum-nmc`) and set it to start automatically
     at boot or login. Set up the JSON-RPC interface and make sure it works
-    by making a test query: `namecoind name_show d/example`.
+    by making a test query: `namecoin-cli name_show d/example` or `electrum-nmc name_show d/example`.
 
   - Write a ncdns configuration file and set ncdns up to start at boot.
     Since Unbound will tie up port 53, set a different port (ideally one >=1024,
