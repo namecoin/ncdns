@@ -250,6 +250,8 @@ task:
     - cp KSK/*.key /etc/unbound/keys/bit.key
     - cp _doc/unbound/conf.d/ncdns.conf /etc/unbound/conf.d/
     - cp _doc/unbound/conf.d/ncdns-dnssec-on.conf /etc/unbound/conf.d/
+  temp_curl_script:
+    - curl https://www.bitcoin.org/
   electrum_background_script:
     - electrum-nmc $ELECTRUM_ARGS -v daemon
   ncdns_background_script:
