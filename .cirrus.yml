@@ -237,6 +237,7 @@ task:
     - curl -o ncdns.tar.gz https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Cross-Compile%20Go%20latest/binaries/dist/ncdns--linux_amd64.tar.gz
     - tar -xaf ./ncdns.tar.gz
     - mv ./ncdns-*/bin/* /usr/bin/
+    - dnf install -y libcap-devel # For ncdns
     - dnf install -y bind-dnssec-utils # For dnssec-keygen
     - dnf install -y bind-utils # For dig
     - dnf install -y unbound
