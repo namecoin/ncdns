@@ -214,7 +214,9 @@ func webStart(listenAddr string, server *Server) error {
 		Handler: ws,
 	}
 
-	go s.ListenAndServe()
-	// TODO: error handling
+	go func() {
+		err := s.ListenAndServe()
+		log.Errore(err, "HTTP server")
+	}()
 	return nil
 }
