@@ -74,7 +74,7 @@ func SplitDomainByFloatingAnchor(qname, anchor string) (subname, basename, rootn
 		// scanning for rootname
 		if v == anchor {
 			if i == 0 {
-				// i is alreay zero, so we have something like bit.x.y.z.
+				// i is already zero, so we have something like bit.x.y.z.
 				rootname = qname
 				return
 			}
