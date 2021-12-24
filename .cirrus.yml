@@ -250,9 +250,9 @@ task:
     - cp _doc/unbound/conf.d/ncdns.conf /etc/unbound/conf.d/
     - cp _doc/unbound/conf.d/ncdns-dnssec-on.conf /etc/unbound/conf.d/
   electrum_background_script:
-    - electrum-nmc $ELECTRUM_ARGS -v
+    - electrum-nmc $ELECTRUM_ARGS -v daemon
   ncdns_background_script:
-    - ncdns -ncdns.namecoinrpcusername user -ncdns.namecoinrpcpassword pass -ncdns.bind :5391 -ncdns.privatekey ./KSK/*.private -ncdns.publickey ./KSK/*.key -ncdns.zoneprivatekey ./ZSK/*.private -ncdns.zonepublickey ./ZSK/*.key -xlog.severity DEBUG
+    - ncdns -ncdns.namecoinrpcusername user -ncdns.namecoinrpcpassword pass -ncdns.bind :5391 -ncdns.privatekey $PWD/KSK/*.private -ncdns.publickey $PWD/KSK/*.key -ncdns.zoneprivatekey $PWD/ZSK/*.private -ncdns.zonepublickey $PWD/ZSK/*.key -xlog.severity DEBUG
   unbound_background_script:
     - unbound
   resolve_electrum_script:
