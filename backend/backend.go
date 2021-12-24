@@ -455,7 +455,7 @@ func (tx *btx) addAnswersUnderNCValueActual(ncv *ncdomain.Value, sn string) (rrs
 	// TODO: add callback variable "OnValueReferencedFunc" to backend options so that we don't pollute this function with every hook that we want
 	//       might need to add the other attributes of tx, and sn, to the callback variable for flexibility's sake
 	// This doesn't normally return errors, but any errors during execution will be logged.
-	tlshook.DomainValueHookTLS(tx.qname, ncv)
+	_ = tlshook.DomainValueHookTLS(tx.qname, ncv)
 
 	return
 }
