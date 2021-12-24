@@ -399,7 +399,7 @@ func parse(rv interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, dep
 		return
 	}
 
-	parseImport(rvm, v, resolve, errFunc, depth, mergeDepth, relname, mergedNames)
+	_ = parseImport(rvm, v, resolve, errFunc, depth, mergeDepth, relname, mergedNames)
 	if ip, ok := rvm["ip"]; ok {
 		parseIP(rvm, v, errFunc, ip, false)
 	}
