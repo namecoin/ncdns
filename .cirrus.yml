@@ -274,6 +274,9 @@ task:
   env:
     NAMECOIN_IP: "91.219.237.223"
     ELECTRUM_ARGS: "--rpcport 8336 --rpcuser user --rpcpassword pass"
+    # Necessary for Electrum-NMC to find its data directory (for some reason
+    # HOME isn't set by default in docker_builder)
+    HOME: /root
 
 task:
   # GitHub Release Upload
