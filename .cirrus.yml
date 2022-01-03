@@ -225,22 +225,22 @@ task:
 
 task:
   name: Resolve Tests Electrum Unbound
-  container:
-    image: fedora:latest
+  compute_engine_instance:
+    image_project: cirrus-images
+    image: family/docker-builder
+    platform: linux
     cpu: 1
     memory: 1G
   install_script:
     - curl -o /usr/bin/electrum-nmc https://www.namecoin.org/files/electrum-nmc/electrum-nmc-4.0.0b0/electrum-nmc-nc4.0.0b0-x86_64.AppImage
     - chmod +x /usr/bin/electrum-nmc
-    # Extract Electrum-NMC AppImage
-    - electrum-nmc --offline version
     - curl -o ncdns.tar.gz https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Cross-Compile%20Go%20latest/binaries/dist/ncdns--linux_amd64.tar.gz
     - tar -xaf ./ncdns.tar.gz
     - mv ./ncdns-*/bin/* /usr/bin/
-    - dnf install -y libcap-devel # For ncdns
-    - dnf install -y bind-dnssec-utils # For dnssec-keygen
-    - dnf install -y bind-utils # For dig
-    - dnf install -y unbound
+    - apt-get install -y libcap-dev # For ncdns
+    - apt-get install -y bind9-utils # For dnssec-keygen
+    - apt-get install -y bind9-dnsutils # For dig
+    - apt-get install -y unbound
     # Set up DNSSEC
     - mkdir KSK
     - dnssec-keygen -a RSASHA256 -3 -b 2048 -f KSK -K KSK bit
@@ -250,14 +250,10 @@ task:
     - cp KSK/*.key /etc/unbound/keys/bit.key
     - cp _doc/unbound/conf.d/ncdns.conf /etc/unbound/conf.d/
     - cp _doc/unbound/conf.d/ncdns-dnssec-on.conf /etc/unbound/conf.d/
-  temp_curl_script:
-    - curl https://www.bitcoin.org/
   electrum_background_script:
     - electrum-nmc $ELECTRUM_ARGS -v daemon
   ncdns_background_script:
     - ncdns -ncdns.namecoinrpcusername user -ncdns.namecoinrpcpassword pass -ncdns.bind :5391 -ncdns.privatekey $PWD/KSK/*.private -ncdns.publickey $PWD/KSK/*.key -ncdns.zoneprivatekey $PWD/ZSK/*.private -ncdns.zonepublickey $PWD/ZSK/*.key -xlog.severity DEBUG
-  unbound_background_script:
-    - unbound
   resolve_electrum_script:
     - while ! electrum-nmc $ELECTRUM_ARGS name_show d/namecoin
     - do
@@ -276,10 +272,6 @@ task:
   depends_on:
     - "Cross-Compile Go latest"
   env:
-    # Workaround FUSE/Docker incompatibility.
-    # See https://github.com/AppImage/AppImageKit/issues/828#issuecomment-730002566
-    APPIMAGE_EXTRACT_AND_RUN: 1
-    NO_CLEANUP: 1
     NAMECOIN_IP: "91.219.237.223"
     ELECTRUM_ARGS: "--rpcport 8336 --rpcuser user --rpcpassword pass"
 
