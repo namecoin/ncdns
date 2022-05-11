@@ -16,6 +16,8 @@ task:
         GO111MODULE: "off"
         GOLANGCI_MODULES_ARGS: "--disable=gomoddirectives,gomodguard"
         MODULES_NAME: " Modules Off"
+      # TODO: Stop allowing failures once btcd v0.22.1 is released.
+      allow_failures: true
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
@@ -109,6 +111,8 @@ task:
     - env:
         GO111MODULE: "off"
         MODULES_NAME: " Modules Off"
+      # TODO: Stop allowing failures once btcd v0.22.1 is released.
+      allow_failures: true
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
@@ -175,6 +179,8 @@ task:
     - env:
         GO111MODULE: "off"
         MODULES_NAME: " Modules Off"
+      # TODO: Stop allowing failures once btcd v0.22.1 is released.
+      allow_failures: true
       gox_script:
         - go get github.com/mitchellh/gox
       fetch_script:
