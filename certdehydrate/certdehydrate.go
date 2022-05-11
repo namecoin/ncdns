@@ -79,7 +79,9 @@ func (dehydrated *DehydratedCertificate) SerialNumber(name string) ([]byte, erro
 
 func (dehydrated *DehydratedCertificate) String() string {
 	output := []interface{}{1, dehydrated.PubkeyB64, dehydrated.NotBeforeScaled, dehydrated.NotAfterScaled, dehydrated.SignatureAlgorithm, dehydrated.SignatureB64}
-	binOutput, _ := json.Marshal(output)
+	// We don't need to check for errors, because json.Marshal is guaranteed to
+	// succeed for integer/string types.
+	binOutput, _ := json.Marshal(output) //nolint:errchkjson
 	return string(binOutput)
 }
 
