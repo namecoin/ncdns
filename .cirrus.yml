@@ -32,11 +32,11 @@ task:
         - cd ../
         - git clone https://github.com/namecoin/certinject.git
         - cd certinject
-        #- go mod init github.com/namecoin/certinject
-        #- go mod tidy
+        - go mod init github.com/namecoin/certinject
+        - go mod tidy
         - go generate ./...
-        #- go mod tidy
-        #- go install -v ./...
+        - go mod tidy
+        - go install -v ./...
       x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
@@ -126,11 +126,11 @@ task:
         - cd ../
         - git clone https://github.com/namecoin/certinject.git
         - cd certinject
-        #- go mod init github.com/namecoin/certinject
-        #- go mod tidy
+        - go mod init github.com/namecoin/certinject
+        - go mod tidy
         - go generate ./...
-        #- go mod tidy
-        #- go install -v ./...
+        - go mod tidy
+        - go install -v ./...
       x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
@@ -198,11 +198,11 @@ task:
         - cd ../
         - git clone https://github.com/namecoin/certinject.git
         - cd certinject
-        #- go mod init github.com/namecoin/certinject
-        #- go mod tidy
+        - go mod init github.com/namecoin/certinject
+        - go mod tidy
         - go generate ./...
-        #- go mod tidy
-        #- go install -v ./...
+        - go mod tidy
+        - go install -v ./...
       x509_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
