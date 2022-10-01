@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/hlandau/xlog"
-	"github.com/namecoin/btcd/rpcclient"
+	"github.com/btcsuite/btcd/rpcclient"
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 
