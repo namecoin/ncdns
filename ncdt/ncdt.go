@@ -7,7 +7,7 @@ import "fmt"
 import "os"
 import "strconv"
 import "io/ioutil"
-import "github.com/namecoin/btcd/rpcclient"
+import "github.com/btcsuite/btcd/rpcclient"
 import "github.com/namecoin/ncdns/util"
 
 var rpchost = flag.String("rpchost", "", "Namecoin RPC host:port")

@@ -12,7 +12,7 @@ import (
 	"github.com/hlandau/buildinfo"
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
-	"github.com/namecoin/btcd/rpcclient"
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/namecoin/ncdns/backend"
 	"github.com/namecoin/ncdns/namecoin"
 	madns "gopkg.in/hlandau/madns.v2"

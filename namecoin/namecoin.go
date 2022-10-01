@@ -2,7 +2,7 @@ package namecoin
 
 import (
 	"github.com/btcsuite/btcd/btcjson"
-	"github.com/namecoin/btcd/rpcclient"
+	"github.com/btcsuite/btcd/rpcclient"
 	"gopkg.in/hlandau/madns.v2/merr"
 
 	"github.com/namecoin/ncbtcjson"
