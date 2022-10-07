@@ -60,8 +60,9 @@ task:
         GOLANGCI_ARGS: "--new-from-rev=HEAD~"
     - name: "Go Lint $GOOS Mandatory$MODULES_NAME"
       env:
+        # TODO: Re-enable dupword after ncdns issue #166 is fixed.
         # TODO: Re-enable varnamelen after golangci-lint v1.44 is released.
-        GOLANGCI_ARGS: "--disable=cyclop,deadcode,errorlint,exhaustivestruct,forbidigo,forcetypeassert,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofumpt,goimports,golint,gosec,gosimple,govet,ineffassign,lll,maligned,nakedret,nestif,nilerr,nlreturn,nonamedreturns,paralleltest,revive,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,varnamelen,wastedassign,whitespace,wrapcheck,wsl"
+        GOLANGCI_ARGS: "--disable=cyclop,deadcode,dupword,errorlint,exhaustivestruct,forbidigo,forcetypeassert,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofumpt,goimports,golint,gosec,gosimple,govet,ineffassign,lll,maligned,nakedret,nestif,nilerr,nlreturn,nonamedreturns,paralleltest,revive,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,varnamelen,wastedassign,whitespace,wrapcheck,wsl"
     - name: "Go Lint $GOOS$MODULES_NAME"
       env:
         GOLANGCI_ARGS: ""
