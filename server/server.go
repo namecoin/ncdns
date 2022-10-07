@@ -9,13 +9,14 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/hlandau/buildinfo"
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
-	"github.com/btcsuite/btcd/rpcclient"
+	madns "gopkg.in/hlandau/madns.v2"
+
 	"github.com/namecoin/ncdns/backend"
 	"github.com/namecoin/ncdns/namecoin"
-	madns "gopkg.in/hlandau/madns.v2"
 )
 
 var log, Log = xlog.New("ncdns.server")
