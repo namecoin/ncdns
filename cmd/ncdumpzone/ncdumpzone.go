@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/hlandau/xlog"
 	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/hlandau/xlog"
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 
