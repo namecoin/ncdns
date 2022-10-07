@@ -47,14 +47,15 @@ func SplitDomainTail(name string) (tail, rest string) {
 // If ANCHOR is the first label, basename is an empty string.
 //
 // Examples, where anchor="bit":
-//   "a.b.c.d."           -> merr.ErrNotInZone
-//   "a.b.c.d.bit."       -> subname="a.b.c", basename="d", rootname="bit"
-//   "d.bit."             -> subname="",      basename="d", rootname="bit"
-//   "bit."               -> subname="",      basename="",  rootname="bit"
-//   "bit.x.y.z."         -> subname="",      basename="",  rootname="bit.x.y.z"
-//   "d.bit.x.y.z."       -> subname="",      basename="d", rootname="bit.x.y.z"
-//   "c.d.bit.x.y.z."     -> subname="c",     basename="d", rootname="bit.x.y.z"
-//   "a.b.c.d.bit.x.y.z." -> subname="a.b.c",     basename="d", rootname="bit.x.y.z"
+//
+//	"a.b.c.d."           -> merr.ErrNotInZone
+//	"a.b.c.d.bit."       -> subname="a.b.c", basename="d", rootname="bit"
+//	"d.bit."             -> subname="",      basename="d", rootname="bit"
+//	"bit."               -> subname="",      basename="",  rootname="bit"
+//	"bit.x.y.z."         -> subname="",      basename="",  rootname="bit.x.y.z"
+//	"d.bit.x.y.z."       -> subname="",      basename="d", rootname="bit.x.y.z"
+//	"c.d.bit.x.y.z."     -> subname="c",     basename="d", rootname="bit.x.y.z"
+//	"a.b.c.d.bit.x.y.z." -> subname="a.b.c",     basename="d", rootname="bit.x.y.z"
 func SplitDomainByFloatingAnchor(qname, anchor string) (subname, basename, rootname string, err error) {
 	qname = strings.TrimRight(qname, ".")
 	parts := strings.Split(qname, ".")
