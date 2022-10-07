@@ -58,7 +58,8 @@ task:
   matrix:
     - name: "Go Lint $GOOS New$MODULES_NAME"
       env:
-        GOLANGCI_ARGS: "--new-from-rev=HEAD~"
+        # gci seems to be buggy with --new-from-rev=
+        GOLANGCI_ARGS: "--new-from-rev=HEAD~ --disable=gci"
     - name: "Go Lint $GOOS Mandatory$MODULES_NAME"
       env:
         # TODO: Re-enable dupword after ncdns issue #166 is fixed.
