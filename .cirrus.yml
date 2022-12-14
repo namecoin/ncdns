@@ -168,6 +168,43 @@ task:
     GOX_TAGS: ""
 
 task:
+  name: "Functional Tests Ubuntu Go $GO_VERSION$MODULES_NAME"
+  compute_engine_instance:
+    image_project: cirrus-images
+    image: family/docker-builder
+    platform: linux
+    cpu: 1
+    memory: 1G
+  bitcoind_cache:
+    folder: /tmp/bitcoind
+    populate_script: mkdir -p /tmp/bitcoind
+  install_script:
+    - apt-get update
+    - BITCOIND_URL=$(curl https://www.namecoin.org/download/ | grep x86_64-linux-gnu.tar.gz | grep -v 0.13.99 | grep --only-matching https://.*.tar.gz)
+    - BITCOIND_FILENAME=$(echo $BITCOIND_URL | grep -E --only-matching 'namecoin-nc.*.tar.gz')
+    - BITCOIND_PATH=/tmp/bitcoind/$BITCOIND_FILENAME
+    - tar -xaf $BITCOIND_PATH || (rm -f /tmp/bitcoind/* && curl --output $BITCOIND_PATH $BITCOIND_URL && tar -xaf $BITCOIND_PATH)
+    - cp -a namecoin-*/* /usr/
+    - NCDNS_URL=https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Cross-Compile%20Go%20$GO_VERSION/binaries/dist/ncdns--linux_amd64.tar.gz
+    - curl -o ncdns.tar.gz $NCDNS_URL
+    - tar -xaf ncdns.tar.gz
+    - cp -a ncdns--*/* /usr/
+  bitcoind_service_background_script:
+    - testdata/run_bitcoind.sh
+  ncdns_service_background_script:
+    # ncdns refuses to run as root
+    - adduser ncdns --disabled-password
+    - ncdns -conf testdata/ncdns.conf
+  regtest_script:
+    - sleep 10s
+    - testdata/regtest.sh
+  depends_on:
+    - "Cross-Compile Go $GO_VERSION$MODULES_NAME"
+  env:
+    GO_VERSION: latest
+    MODULES_NAME: ""
+
+task:
   name: "Cross-Compile Go $GO_VERSION$MODULES_NAME"
   alias: Cross-Compile
   container:
@@ -257,6 +294,7 @@ task:
     - ShellCheck
     - Unit Tests
     - Cross-Compile
+    - Functional Tests Ubuntu Go latest
   bin_cache:
     folder: "idist"
     fingerprint_script:
