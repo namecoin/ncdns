@@ -74,3 +74,16 @@ echo "$dig_output"
 echo "Checking response correctness"
 tlsa_hex="$(echo 'MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADvxHcjwDYMNfUSTtSIn3VbBC1sOzh/1Fv5T0UzEuLWIE=' | base64 --decode | xxd -u -ps -c 500)"
 echo "$dig_output" | sed 's/ //g' | grep "$tlsa_hex"
+
+echo "Query testls.bit IPv4 Recursive via dig"
+dig_output=$(dig -p 53 @127.0.0.1 A testls.bit)
+echo "$dig_output"
+echo "Checking response correctness"
+echo "$dig_output" | grep "107.152.38.155"
+
+echo "Query testls.bit TLS Recursive via dig"
+dig_output=$(dig -p 53 @127.0.0.1 TLSA "*.testls.bit")
+echo "$dig_output"
+echo "Checking response correctness"
+tlsa_hex="$(echo 'MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADvxHcjwDYMNfUSTtSIn3VbBC1sOzh/1Fv5T0UzEuLWIE=' | base64 --decode | xxd -u -ps -c 500)"
+echo "$dig_output" | sed 's/ //g' | grep "$tlsa_hex"

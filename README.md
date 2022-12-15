@@ -28,19 +28,11 @@ Using ncdns with a recursive resolver
 -------------------------------------
 Of course the daemon can also be used simply as an authoritative nameserver for
 bit. directly. One way to do this is to run a recursive resolver (such as
-Unbound) and configure it to serve the zone as a 'stub zone'. Here is an example
-unbound configuration:
+Unbound) and configure it to serve the zone as a 'stub zone'. An example
+Unbound configuration is in `_doc/unbound.conf.d/ncdns.conf`.
 
-    server:
-      do-not-query-localhost: no
-    stub-zone:
-      name: bit.
-      stub-addr: 127.0.0.1@1153
-
-If you don't want to use DNSSEC, also add:
-
-    server:
-      domain-insecure: bit.
+If you don't want to use DNSSEC, an additional Unbound configuration is in
+`_doc/unbound.conf.d/ncdns-insecure.conf`.
 
 If you do want to use DNSSEC, see the instructions below.
 
