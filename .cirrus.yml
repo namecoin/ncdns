@@ -282,6 +282,61 @@ task:
     GO_VERSION: latest
 
 task:
+  name: Resolve Tests Electrum Unbound
+  compute_engine_instance:
+    image_project: cirrus-images
+    image: family/docker-builder
+    platform: linux
+    cpu: 1
+    memory: 1G
+  install_script:
+    - curl -o /usr/bin/electrum-nmc https://www.namecoin.org/files/electrum-nmc/electrum-nmc-4.0.0b0/electrum-nmc-nc4.0.0b0-x86_64.AppImage
+    - chmod +x /usr/bin/electrum-nmc
+    - curl -o ncdns.tar.gz https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/Cross-Compile%20Go%20latest/binaries/dist/ncdns--linux_amd64.tar.gz
+    - tar -xaf ./ncdns.tar.gz
+    - mv ./ncdns-*/bin/* /usr/bin/
+    - apt-get install -y libcap-dev # For ncdns
+    - apt-get install -y bind9-utils # For dnssec-keygen
+    - apt-get install -y bind9-dnsutils # For dig
+    - apt-get install -y unbound
+    # Set up DNSSEC
+    - mkdir KSK
+    - dnssec-keygen -a RSASHA256 -3 -b 2048 -f KSK -K KSK bit
+    - mkdir ZSK
+    - dnssec-keygen -a RSASHA256 -3 -b 2048 -K ZSK bit
+    - mkdir -p /etc/unbound/keys/ /etc/unbound/conf.d/
+    - cp KSK/*.key /etc/unbound/keys/bit.key
+    - cp _doc/unbound/conf.d/ncdns.conf /etc/unbound/conf.d/
+    - cp _doc/unbound/conf.d/ncdns-dnssec-on.conf /etc/unbound/conf.d/
+  electrum_background_script:
+    - electrum-nmc $ELECTRUM_ARGS -v daemon
+  ncdns_background_script:
+    - ncdns -ncdns.namecoinrpcusername user -ncdns.namecoinrpcpassword pass -ncdns.bind :5391 -ncdns.privatekey $PWD/KSK/*.private -ncdns.publickey $PWD/KSK/*.key -ncdns.zoneprivatekey $PWD/ZSK/*.private -ncdns.zonepublickey $PWD/ZSK/*.key -xlog.severity DEBUG
+  resolve_electrum_script:
+    - while ! electrum-nmc $ELECTRUM_ARGS name_show d/namecoin
+    - do
+    - echo Waiting for Electrum-NMC to sync...
+    - sleep 1s
+    - done
+    - electrum-nmc $ELECTRUM_ARGS name_show d/namecoin | grep $NAMECOIN_IP
+  resolve_ncdns_script:
+    - dig -p 5391 @127.0.0.1 namecoin.bit
+    - dig -p 5391 @127.0.0.1 namecoin.bit | grep $NAMECOIN_IP
+    - dig -p 5391 +tcp @127.0.0.1 namecoin.bit
+    - dig -p 5391 +tcp @127.0.0.1 namecoin.bit | grep $NAMECOIN_IP
+  resolve_unbound_script:
+    - dig -p 53 @127.0.0.1 namecoin.bit
+    - dig -p 53 @127.0.0.1 namecoin.bit | grep $NAMECOIN_IP
+  depends_on:
+    - "Cross-Compile Go latest"
+  env:
+    NAMECOIN_IP: "91.219.237.223"
+    ELECTRUM_ARGS: "--rpcport 8336 --rpcuser user --rpcpassword pass"
+    # Necessary for Electrum-NMC to find its data directory (for some reason
+    # HOME isn't set by default in docker_builder)
+    HOME: /root
+
+task:
   # GitHub Release Upload
   # TODO: implement this.
   name: GitHub Release
