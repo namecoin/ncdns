@@ -87,3 +87,6 @@ echo "$dig_output"
 echo "Checking response correctness"
 tlsa_hex="$(echo 'MDkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDIgADvxHcjwDYMNfUSTtSIn3VbBC1sOzh/1Fv5T0UzEuLWIE=' | base64 --decode | xxd -u -ps -c 500)"
 echo "$dig_output" | sed 's/ //g' | grep "$tlsa_hex"
+
+echo "Fetch testls.bit via curl"
+curl --insecure https://testls.bit/ | grep -i "Cool or nah"
