@@ -168,19 +168,32 @@ task:
     GOX_TAGS: ""
 
 task:
-  name: "Functional Tests Ubuntu Go $GO_VERSION$MODULES_NAME"
-  compute_engine_instance:
-    image_project: cirrus-images
-    image: family/docker-builder
-    platform: linux
-    cpu: 1
-    memory: 1G
+  name: "Functional Tests $CI_DISTRO Go $GO_VERSION$MODULES_NAME"
+  alias: "Functional Tests"
+  matrix:
+    - compute_engine_instance:
+        image_project: debian-cloud
+        image: family/debian-11
+        platform: linux
+        cpu: 1
+        memory: 1G
+      env:
+        CI_DISTRO: debian
+    - compute_engine_instance:
+        image_project: cirrus-images
+        image: family/docker-builder
+        platform: linux
+        cpu: 1
+        memory: 1G
+      env:
+        CI_DISTRO: ubuntu
   bitcoind_cache:
     folder: /tmp/bitcoind
     populate_script: mkdir -p /tmp/bitcoind
   install_script:
     - apt-get update
-    - apt-get install -y dnssec-trigger
+    # bind9-dnsutils contains dig
+    - apt-get install -y dnssec-trigger bind9-dnsutils
     # Namecoin Core
     - BITCOIND_URL=$(curl https://www.namecoin.org/download/ | grep x86_64-linux-gnu.tar.gz | grep -v 0.13.99 | grep --only-matching https://.*.tar.gz)
     - BITCOIND_FILENAME=$(echo $BITCOIND_URL | grep -E --only-matching 'namecoin-nc.*.tar.gz')
@@ -300,7 +313,7 @@ task:
     - ShellCheck
     - Unit Tests
     - Cross-Compile
-    - Functional Tests Ubuntu Go latest
+    - Functional Tests
   bin_cache:
     folder: "idist"
     fingerprint_script:
