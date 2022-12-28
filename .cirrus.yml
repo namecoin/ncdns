@@ -192,7 +192,8 @@ task:
     populate_script: mkdir -p /tmp/bitcoind
   install_script:
     - apt-get update
-    - apt-get install -y dnssec-trigger
+    # bind9-dnsutils contains dig
+    - apt-get install -y dnssec-trigger bind9-dnsutils
     # Namecoin Core
     - BITCOIND_URL=$(curl https://www.namecoin.org/download/ | grep x86_64-linux-gnu.tar.gz | grep -v 0.13.99 | grep --only-matching https://.*.tar.gz)
     - BITCOIND_FILENAME=$(echo $BITCOIND_URL | grep -E --only-matching 'namecoin-nc.*.tar.gz')
