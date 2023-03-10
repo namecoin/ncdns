@@ -165,4 +165,4 @@ Linux:
 Licence
 -------
     Licenced under the GPLv3 or later.
-    © 2014-2015 Hugo Landau <hlandau@devever.net>
+    © 2014-2019 Hugo Landau <hlandau@devever.net>
