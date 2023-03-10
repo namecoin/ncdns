@@ -251,6 +251,12 @@ func (v *Value) appendAlias(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, 
 		if !ok {
 			return out, fmt.Errorf("bad alias")
 		}
+
+		qn, err := redirectInsecure(qn, suffix, apexSuffix)
+		if err != nil {
+			return out, err
+		}
+
 		out = append(out, &dns.CNAME{
 			Hdr: dns.RR_Header{
 				Name:   suffix,
@@ -271,6 +277,12 @@ func (v *Value) appendTranslate(out []dns.RR, suffix, apexSuffix string) ([]dns.
 		if !ok {
 			return out, fmt.Errorf("bad translate")
 		}
+
+		qn, err := redirectInsecure(qn, suffix, apexSuffix)
+		if err != nil {
+			return out, err
+		}
+
 		out = append(out, &dns.DNAME{
 			Hdr: dns.RR_Header{
 				Name:   suffix,
@@ -283,6 +295,43 @@ func (v *Value) appendTranslate(out []dns.RR, suffix, apexSuffix string) ([]dns.
 	}
 
 	return out, nil
+}
+
+func redirectInsecure(qn, suffix, apexSuffix string) (string, error) {
+	subInput, baseInput, rootInput, err := util.SplitDomainByFloatingAnchor(suffix, "bit")
+	if err != nil {
+		return "", err
+	}
+
+	_, _, rootOutput, errOutput := util.SplitDomainByFloatingAnchor(qn, "bit")
+
+	// CNAME/DNAME from Namecoin to non-Namecoin isn't secure since it would trust the ICANN root.
+	insecureAllowed := strings.Contains(apexSuffix + ".", ".bit._insecure_bit.")
+	isSecure := (errOutput == nil) && (rootInput == rootOutput)
+
+	if ! insecureAllowed && ! isSecure {
+		// redirect to the insecure equivalent
+
+		// "a.b.c.d.bit.x.y.z." -> subInput="a.b.c", baseInput="d", rootInput="bit.x.y.z"
+
+		bit, afterBit := util.SplitDomainTail(rootInput)
+		// "a.b.c.d.bit.x.y.z." -> bit="bit", afterBit="x.y.z"
+
+		insecure := bit + "." + "_insecure_bit" + "."
+		if afterBit != "" {
+			insecure = insecure + afterBit + "."
+		}
+		if baseInput != "" {
+			insecure = baseInput + "." + insecure
+		}
+		if subInput != "" {
+			insecure = subInput + "." + insecure
+		}
+
+		return insecure, nil
+	}
+
+	return qn, nil
 }
 
 func (v *Value) RRsRecursive(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
