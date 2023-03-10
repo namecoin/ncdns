@@ -11,6 +11,10 @@
 ### You may explicitly specify a path to the configuration file on the
 ### command line by passing '-conf=PATH'.
 
+[service]
+### Daemon and fork
+## fork=true
+
 [ncdns]
 ### This is a TOML configuration file. Values must be in quotes where shown.
 
@@ -35,6 +39,9 @@
 ### a non-empty capability set, so it precludes use of setcap to bind to privileged
 ### ports just as it precludes the use of conventional privilege dropping.
 ###
+## its not possible to specify more than one ip, but bind to all with ":53" is possible
+## bind="[fd29:68b1:467b:8910:0:0:0:abc1]:53"
+
 #bind="127.0.0.1:53"
 
 
@@ -51,6 +58,9 @@
 
 ### The password with which to connect to the Namecoin JSON-RPC interface.
 #namecoinrpcpassword="password"
+
+### Use the username and password encoded in the .cookie file
+#namecoinrpccookiepath="/home/YOURUSERNAME/.namecoin/.cookie"
 
 ### ncdns caches values retrieved from Namecoin. This value limits the number of
 ### items ncdns may store in its cache. The default value is 100.
