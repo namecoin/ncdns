@@ -3,12 +3,14 @@ package ncdomain
 import "encoding/json"
 import "net"
 import "fmt"
+import "github.com/fxamacker/cbor"
 import "github.com/miekg/dns"
 import "encoding/base64"
 import "encoding/hex"
 import "github.com/namecoin/ncdns/util"
 import "strings"
 import "strconv"
+import "reflect"
 
 const depthLimit = 16
 const mergeDepthLimit = 4
@@ -355,8 +357,15 @@ func ParseValue(name, jsonValue string, resolve ResolveFunc, errFunc ErrorFunc) 
 
 	err := json.Unmarshal([]byte(jsonValue), &rv)
 	if err != nil {
-		errFunc.add(err)
-		return
+		errCBOR := cbor.Unmarshal([]byte(jsonValue), &rv)
+		if errCBOR != nil {
+			errFunc.add(err)
+			errFunc.add(fmt.Errorf("failed to decode cbor (after JSON decoding failed): %v", errCBOR))
+			return
+		}
+		// Some unmarshallers (e.g. CBOR) will create
+		// map[interface{}]interface{} which is incompatible
+		rv = makeJSONSafe(rv)
 	}
 
 	if resolve == nil {
@@ -1082,4 +1091,61 @@ func (v *Value) moveEmptyMapItems() {
 			v.Map = ev.Map
 		}
 	}
+}
+
+// makeJSONSafe walks an interface to ensure all maps use string keys so that
+// encoding to JSON (or YAML) works. Some unmarshallers (e.g. CBOR) will
+// create map[interface{}]interface{} which causes problems marshalling.
+// See https://github.com/fxamacker/cbor/issues/206
+// The function was taken from https://github.com/danielgtaylor/restish/blob/d16bdd717c3a73efbda8ba48a3af6bf8f5995b67/cli/formatter.go#L292-L338
+func makeJSONSafe(obj interface{}) interface{} {
+	value := reflect.ValueOf(obj)
+
+	for value.Kind() == reflect.Ptr {
+		value = value.Elem()
+	}
+
+	switch value.Kind() {
+	case reflect.Slice:
+		if _, ok := obj.([]byte); ok {
+			// Special case: byte slices get special encoding rules in various
+			// formats, so keep them as-is. Without this is breaks the base64
+			// encoding for JSON and gives you an array of integers instead.
+			return obj
+		}
+		returnSlice := make([]interface{}, value.Len())
+		for i := 0; i < value.Len(); i++ {
+			returnSlice[i] = makeJSONSafe(value.Index(i).Interface())
+		}
+		return returnSlice
+	case reflect.Map:
+		tmpData := make(map[string]interface{})
+		for _, k := range value.MapKeys() {
+			kStr := ""
+			if s, ok := k.Interface().(string); ok {
+				kStr = s
+			} else {
+				kStr = fmt.Sprintf("%v", k.Interface())
+			}
+			tmpData[kStr] = makeJSONSafe(value.MapIndex(k).Interface())
+		}
+		return tmpData
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return float64(value.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return float64(value.Uint())
+		// case reflect.Struct:
+		// 	for i := 0; i < value.NumField(); i++ {
+		// 		field := value.Field(i)
+		// 		spew.Dump(field, field.Kind(), field.CanSet())
+		// 		switch field.Kind() {
+		// 		case reflect.Slice, reflect.Map, reflect.Struct, reflect.Ptr:
+		// 			if field.CanSet() {
+		// 				field.Set(reflect.ValueOf(makeJSONSafe(field.Interface())))
+		// 			}
+		// 		}
+		// 	}
+	}
+
+	return obj
 }
