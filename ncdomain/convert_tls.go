@@ -14,7 +14,6 @@ import (
 
 	"github.com/namecoin/ncdns/certdehydrate"
 	"github.com/namecoin/ncdns/util"
-	x509_compressed "github.com/namecoin/x509-compressed/x509"
 )
 
 type Value struct {
@@ -119,36 +118,6 @@ func parseTLSADANE(tlsa1dane interface{}, v *Value) error {
 			MatchingType: uint8(a3),
 			Certificate:  strings.ToUpper(a4h),
 		})
-
-		// Handle compressed public keys specially
-		// Check if this TLSA is a public key preimage
-		if uint8(a2) == 1 && uint8(a3) == 0 {
-			pubDecompressed, err := x509_compressed.ParsePKIXPublicKey(a4b)
-			if err != nil {
-				return nil
-			}
-
-			pubDecompressedBytes, err := x509.MarshalPKIXPublicKey(pubDecompressed)
-			if err != nil {
-				return nil
-			}
-
-			pubDecompressedHex := hex.EncodeToString(pubDecompressedBytes)
-
-			if pubDecompressedHex == a4h {
-				// The pubkey wasn't compressed, so decompressing had no impact.
-				return nil
-			}
-
-			v.TLSA = append(v.TLSA, &dns.TLSA{
-				Hdr: dns.RR_Header{Name: "", Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
-					Ttl: defaultTTL},
-				Usage:        uint8(a1),
-				Selector:     uint8(a2),
-				MatchingType: uint8(a3),
-				Certificate:  strings.ToUpper(pubDecompressedHex),
-			})
-		}
 
 		return nil
 	} else {
