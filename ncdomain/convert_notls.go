@@ -7,10 +7,6 @@ import (
 	"github.com/miekg/dns"
 )
 
-type Value struct {
-	valueWithoutTLSA
-}
-
 func (v *Value) appendTLSA(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
 	return out, nil
 }

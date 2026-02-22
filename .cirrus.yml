@@ -19,8 +19,6 @@ task:
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go generate github.com/namecoin/certinject/...
-        - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
     - env:
         GOLANGCI_MODULES_ARGS: ""
@@ -33,32 +31,11 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
         - cd $(go env GOPATH)/src/github.com/alecthomas
         - git clone https://github.com/alecthomas/kingpin.git
-      certinject_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/certinject.git
-        - cd certinject
-        - go mod init github.com/namecoin/certinject
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
-        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
-      x509_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/x509-compressed.git
-        - cd x509-compressed
-        - go mod init github.com/namecoin/x509-compressed
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
       fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd -replace github.com/namecoin/certinject=../certinject -replace github.com/namecoin/x509-compressed=../x509-compressed
+        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
@@ -125,8 +102,6 @@ task:
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go generate github.com/namecoin/certinject/...
-        - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
     - env:
         MODULES_NAME: ""
@@ -138,32 +113,11 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
         - cd $(go env GOPATH)/src/github.com/alecthomas
         - git clone https://github.com/alecthomas/kingpin.git
-      certinject_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/certinject.git
-        - cd certinject
-        - go mod init github.com/namecoin/certinject
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
-        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
-      x509_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/x509-compressed.git
-        - cd x509-compressed
-        - go mod init github.com/namecoin/x509-compressed
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
       fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd -replace github.com/namecoin/certinject=../certinject -replace github.com/namecoin/x509-compressed=../x509-compressed
+        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
         # Get the test suite
         - mkdir -p $(go env GOPATH)/src/github.com/hlandau
@@ -259,8 +213,6 @@ task:
       fetch_script:
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
         - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go generate github.com/namecoin/certinject/...
-        - go generate github.com/namecoin/x509-compressed/...
         - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
     - env:
         MODULES_NAME: ""
@@ -274,32 +226,11 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
         - cd $(go env GOPATH)/src/github.com/alecthomas
         - git clone https://github.com/alecthomas/kingpin.git
-      certinject_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/certinject.git
-        - cd certinject
-        - go mod init github.com/namecoin/certinject
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
-        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
-      x509_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - cd ../
-        - git clone https://github.com/namecoin/x509-compressed.git
-        - cd x509-compressed
-        - go mod init github.com/namecoin/x509-compressed
-        - go mod tidy
-        - go generate ./...
-        - go mod tidy
-        - go install -v ./...
       fetch_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd -replace github.com/namecoin/certinject=../certinject -replace github.com/namecoin/x509-compressed=../x509-compressed
+        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
   build_script:
     - rm -rf idist

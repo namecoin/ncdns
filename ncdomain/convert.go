@@ -29,7 +29,7 @@ const defaultTTL = 600
 // in some cases, namely for Alias and Translate, the empty string is represented as "=".
 // Therefore when qualifying names in a Value yourself you must check if the
 // input string is "=" and if so, replace it with "" first.
-type valueWithoutTLSA struct {
+type Value struct {
 	IP           []net.IP
 	IP6          []net.IP
 	NS           []string

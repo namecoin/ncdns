@@ -4,77 +4,20 @@
 package ncdomain
 
 import (
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"strings"
 
 	"github.com/miekg/dns"
-
-	"github.com/namecoin/ncdns/certdehydrate"
-	"github.com/namecoin/ncdns/util"
-	x509_compressed "github.com/namecoin/x509-compressed/x509"
 )
-
-type Value struct {
-	valueWithoutTLSA
-	TLSAGenerated []x509.Certificate // Certs can be dehydrated in the blockchain, they will be put here without SAN values.  SAN must be filled in before use.
-}
 
 func (v *Value) appendTLSA(out []dns.RR, suffix, apexSuffix string) ([]dns.RR, error) {
 	for _, tlsa := range v.TLSA {
 		out = append(out, tlsa)
 	}
 
-	for _, cert := range v.TLSAGenerated {
-
-		template := cert
-
-		_, nameNoPort := util.SplitDomainTail(suffix)
-		_, nameNoPortOrProtocol := util.SplitDomainTail(nameNoPort)
-
-		if !strings.HasSuffix(nameNoPortOrProtocol, ".") {
-			continue
-		}
-		nameNoPortOrProtocol = strings.TrimSuffix(nameNoPortOrProtocol, ".")
-
-		derBytes, err := certdehydrate.FillRehydratedCertTemplate(template, nameNoPortOrProtocol)
-		if err != nil {
-			// TODO: add debug output here
-			continue
-		}
-
-		derBytesHex := hex.EncodeToString(derBytes)
-
-		out = append(out, &dns.TLSA{
-			Hdr: dns.RR_Header{Name: "", Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
-				Ttl: defaultTTL},
-			Usage:        uint8(3),
-			Selector:     uint8(0),
-			MatchingType: uint8(0),
-			Certificate:  strings.ToUpper(derBytesHex),
-		})
-
-	}
-
 	return out, nil
-}
-
-func parseTLSADehydrated(tlsa1dehydrated interface{}, v *Value) error {
-	dehydrated, err := certdehydrate.ParseDehydratedCert(tlsa1dehydrated)
-	if err != nil {
-		return fmt.Errorf("Error parsing dehydrated certificate: %s", err)
-	}
-
-	template, err := certdehydrate.RehydrateCert(dehydrated)
-	if err != nil {
-		return fmt.Errorf("Error rehydrating certificate: %s", err)
-	}
-
-	v.TLSAGenerated = append(v.TLSAGenerated, *template)
-
-	return nil
 }
 
 func parseTLSADANE(tlsa1dane interface{}, v *Value) error {
@@ -120,36 +63,6 @@ func parseTLSADANE(tlsa1dane interface{}, v *Value) error {
 			Certificate:  strings.ToUpper(a4h),
 		})
 
-		// Handle compressed public keys specially
-		// Check if this TLSA is a public key preimage
-		if uint8(a2) == 1 && uint8(a3) == 0 {
-			pubDecompressed, err := x509_compressed.ParsePKIXPublicKey(a4b)
-			if err != nil {
-				return nil
-			}
-
-			pubDecompressedBytes, err := x509.MarshalPKIXPublicKey(pubDecompressed)
-			if err != nil {
-				return nil
-			}
-
-			pubDecompressedHex := hex.EncodeToString(pubDecompressedBytes)
-
-			if pubDecompressedHex == a4h {
-				// The pubkey wasn't compressed, so decompressing had no impact.
-				return nil
-			}
-
-			v.TLSA = append(v.TLSA, &dns.TLSA{
-				Hdr: dns.RR_Header{Name: "", Rrtype: dns.TypeTLSA, Class: dns.ClassINET,
-					Ttl: defaultTTL},
-				Usage:        uint8(a1),
-				Selector:     uint8(a2),
-				MatchingType: uint8(a3),
-				Certificate:  strings.ToUpper(pubDecompressedHex),
-			})
-		}
-
 		return nil
 	} else {
 		return fmt.Errorf("TLSA item must be an array")
@@ -174,14 +87,6 @@ func parseTLSA(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
 				}
 			} else {
 				tlsa1m = tlsa1.(map[string]interface{})
-			}
-
-			if tlsa1dehydrated, ok := tlsa1m["d8"]; ok {
-				err := parseTLSADehydrated(tlsa1dehydrated, v)
-				if err == nil {
-					continue
-				}
-				errFunc.add(err)
 			}
 
 			if tlsa1dane, ok := tlsa1m["dane"]; ok {
