@@ -93,25 +93,21 @@ Option A: Using Go build commands without Go modules (works on any platform with
 3. Run `go get -d -t -u github.com/namecoin/ncdns/...`. The ncdns source code will be
    retrieved automatically.
 
-4. Run `go generate github.com/namecoin/certinject/...`.  The ReactOS property list will be parsed.
-
-5. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
+4. Run `go get -t -u github.com/namecoin/ncdns/...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
 
 Option B: Using Go build commands with Go modules (works on any platform with Bash; Go 1.15+:
 
-1. Clone [certinject](https://github.com/namecoin/certinject) and ncdns to sibling directories.
+1. Clone ncdns.
 
-2. Install `certinject` according to its instructions.
-
-3. Run the following in the ncdns directory to set up Go modules:
+2. Run the following in the ncdns directory to set up Go modules:
    
    ~~~
    go mod init github.com/namecoin/ncdns
-   go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest -replace github.com/namecoin/certinject=../certinject
+   go mod edit -replace github.com/coreos/go-systemd=github.com/coreos/go-systemd/v22@latest
    go mod tidy
    ~~~
 
-4. Run `go install ./...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
+3. Run `go install ./...`.  ncdns will be built. The binaries will be at `$GOPATH/bin/ncdns`.
 
 Option C: Using Makefile (non-Windows platforms):
 
