@@ -48,6 +48,7 @@ task:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd -replace github.com/namecoin/certinject=../certinject
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
@@ -142,6 +143,7 @@ task:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd -replace github.com/namecoin/certinject=../certinject
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
         # Get the test suite
         - mkdir -p $(go env GOPATH)/src/github.com/hlandau
@@ -267,6 +269,7 @@ task:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
         - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd -replace github.com/namecoin/certinject=../certinject
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
   build_script:
     - rm -rf idist
