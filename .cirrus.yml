@@ -29,6 +29,10 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/coreos
         - cd $(go env GOPATH)/src/github.com/coreos
         - git clone https://github.com/coreos/go-systemd.git
+      kingpin_script:
+        - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
+        - cd $(go env GOPATH)/src/github.com/alecthomas
+        - git clone https://github.com/alecthomas/kingpin.git
       certinject_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
@@ -36,6 +40,7 @@ task:
         - cd certinject
         - go mod init github.com/namecoin/certinject
         - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
         - go generate ./...
         - go mod tidy
@@ -129,6 +134,10 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/coreos
         - cd $(go env GOPATH)/src/github.com/coreos
         - git clone https://github.com/coreos/go-systemd.git
+      kingpin_script:
+        - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
+        - cd $(go env GOPATH)/src/github.com/alecthomas
+        - git clone https://github.com/alecthomas/kingpin.git
       certinject_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
@@ -136,6 +145,7 @@ task:
         - cd certinject
         - go mod init github.com/namecoin/certinject
         - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
         - go generate ./...
         - go mod tidy
@@ -260,6 +270,10 @@ task:
         - mkdir -p $(go env GOPATH)/src/github.com/coreos
         - cd $(go env GOPATH)/src/github.com/coreos
         - git clone https://github.com/coreos/go-systemd.git
+      kingpin_script:
+        - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
+        - cd $(go env GOPATH)/src/github.com/alecthomas
+        - git clone https://github.com/alecthomas/kingpin.git
       certinject_script:
         - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
         - cd ../
@@ -267,6 +281,7 @@ task:
         - cd certinject
         - go mod init github.com/namecoin/certinject
         - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
         - go mod tidy
         - go generate ./...
         - go mod tidy
