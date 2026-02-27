@@ -120,7 +120,23 @@ task:
         cpu: 1
         memory: 1G
       env:
-        CI_DISTRO: debian
+        CI_DISTRO: debian-11
+    - compute_engine_instance:
+        image_project: debian-cloud
+        image: family/debian-12
+        platform: linux
+        cpu: 1
+        memory: 1G
+      env:
+        CI_DISTRO: debian-12
+    - compute_engine_instance:
+        image_project: debian-cloud
+        image: family/debian-13
+        platform: linux
+        cpu: 1
+        memory: 1G
+      env:
+        CI_DISTRO: debian-13
     - compute_engine_instance:
         image_project: cirrus-images
         image: family/docker-builder
