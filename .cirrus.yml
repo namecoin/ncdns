@@ -28,20 +28,24 @@ task:
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
     # nosnakecase complains about stdlib API's that we can't change.
-    - golangci-lint run --enable-all --disable execinquery,exhaustruct,gochecknoglobals,gomnd,interfacer,nosnakecase $GOLANGCI_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
+    - golangci-lint run $GOLANGCI_ARGS -v --timeout 5m --output.json.path $CIRRUS_WORKING_DIR/lint-report.json
+  # Not running "copyloopvar" linter because it needs Go 1.22+, which isn't supported yet in gccgo 14 (Go 1.16-1.18), which is what Debian Trixie/Stable uses.
+  # Not running "depguard" linter because it looks too niche.
+  # Not running "exhaustruct" linter because it looks too niche.
+  # Not running "gosmopolitan" linter because it's not aimed at English-language code.
+  # Not running "intrange" linter because it needs Go 1.22+, which isn't supported yet in gccgo 14 (Go 1.16-1.18), which is what Debian Trixie/Stable uses.
   matrix:
     - name: "Go Lint $GOOS New"
       env:
-        # gci seems to be buggy with --new-from-rev=
-        GOLANGCI_ARGS: "--new-from-rev=HEAD~ --disable=gci"
+        GOLANGCI_ARGS: "--new-from-rev=HEAD~ --enable=cyclop,dupword,embeddedstructfieldcheck,err113,errcheck,exhaustive,forcetypeassert,funlen,gocognit,goconst,gocritic,godoclint,godot,gosec,govet,ineffassign,mnd,modernize,nakedret,nlreturn,staticcheck,unconvert,unparam,unused,wastedassign,wsl_v5"
     - name: "Go Lint $GOOS Mandatory"
       env:
         # TODO: Re-enable dupword after ncdns issue #166 is fixed.
         # TODO: Re-enable varnamelen after golangci-lint v1.44 is released.
-        GOLANGCI_ARGS: "--disable=cyclop,deadcode,dupword,errorlint,exhaustivestruct,forbidigo,forcetypeassert,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofumpt,goimports,golint,gosec,gosimple,govet,ineffassign,lll,maligned,nakedret,nestif,nilerr,nlreturn,nonamedreturns,paralleltest,revive,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,varnamelen,wastedassign,whitespace,wrapcheck,wsl"
+        GOLANGCI_ARGS: "--enable=asasalint,asciicheck,bidichk,bodyclose,canonicalheader,decorder,dupl,durationcheck,errchkjson,errname,exptostd,gocheckcompilerdirectives,goprintffuncname,misspell,predeclared,usestdlibvars --disable=errcheck,govet,ineffassign,staticcheck,unused"
     - name: "Go Lint $GOOS"
       env:
-        GOLANGCI_ARGS: ""
+        GOLANGCI_ARGS: "--enable=cyclop,dupword,embeddedstructfieldcheck,err113,errcheck,exhaustive,forcetypeassert,funlen,gocognit,goconst,gocritic,godoclint,godot,gosec,govet,ineffassign,mnd,modernize,nakedret,nlreturn,staticcheck,unconvert,unparam,unused,wastedassign,wsl_v5"
       allow_failures: true
   matrix:
     - env:

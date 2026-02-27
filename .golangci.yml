@@ -1,14 +1,11 @@
-linters-settings:
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/namecoin)
-  goimports:
-    local-prefixes: "github.com/namecoin"
-  gomoddirectives:
-    replace-local: true
-    replace-allow-list:
-      - "github.com/coreos/go-systemd"
-  varnamelen:
-    ignore-type-assert-ok: true
+version: "2"
+formatters:
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/namecoin)
+    goimports:
+      local-prefixes:
+        - github.com/namecoin
