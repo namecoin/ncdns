@@ -151,7 +151,7 @@ task:
   install_script:
     - apt-get update
     # bind9-dnsutils contains dig
-    - apt-get install -y dnssec-trigger bind9-dnsutils
+    - apt-get install -y dnssec-trigger bind9-dnsutils xxd
     # Namecoin Core
     # Temporarily downgrade Namecoin Core until deterministic salts with descriptor wallets are fixed.
     #- BITCOIND_URL=$(curl https://www.namecoin.org/download/ | grep x86_64-linux-gnu.tar.gz | grep -v 0.13.99 | grep --only-matching https://.*.tar.gz)
