@@ -11,47 +11,35 @@ task:
     - apt-get install -y libcap-dev
   path_script:
     - source testdata/move_to_gopath.bash
-  matrix:
-    - env:
-        GO111MODULE: "off"
-        GOLANGCI_MODULES_ARGS: "--disable=gomoddirectives,gomodguard"
-        MODULES_NAME: " Modules Off"
-      fetch_script:
-        - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - env:
-        GOLANGCI_MODULES_ARGS: ""
-        MODULES_NAME: ""
-      systemd_script:
-        - mkdir -p $(go env GOPATH)/src/github.com/coreos
-        - cd $(go env GOPATH)/src/github.com/coreos
-        - git clone https://github.com/coreos/go-systemd.git
-      kingpin_script:
-        - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
-        - cd $(go env GOPATH)/src/github.com/alecthomas
-        - git clone https://github.com/alecthomas/kingpin.git
-      fetch_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
-        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
-        - go mod tidy
+  systemd_script:
+    - mkdir -p $(go env GOPATH)/src/github.com/coreos
+    - cd $(go env GOPATH)/src/github.com/coreos
+    - git clone https://github.com/coreos/go-systemd.git
+  kingpin_script:
+    - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
+    - cd $(go env GOPATH)/src/github.com/alecthomas
+    - git clone https://github.com/alecthomas/kingpin.git
+  fetch_script:
+    - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
+    - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
+    - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+    - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
+    - go mod tidy
   lint_script:
     - cd $(go env GOPATH)/src/github.com/$CIRRUS_REPO_FULL_NAME/
     # nosnakecase complains about stdlib API's that we can't change.
-    - golangci-lint run --enable-all --disable execinquery,exhaustruct,gochecknoglobals,gomnd,interfacer,nosnakecase $GOLANGCI_ARGS $GOLANGCI_MODULES_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
+    - golangci-lint run --enable-all --disable execinquery,exhaustruct,gochecknoglobals,gomnd,interfacer,nosnakecase $GOLANGCI_ARGS -v --timeout 5m --out-format json > $CIRRUS_WORKING_DIR/lint-report.json
   matrix:
-    - name: "Go Lint $GOOS New$MODULES_NAME"
+    - name: "Go Lint $GOOS New"
       env:
         # gci seems to be buggy with --new-from-rev=
         GOLANGCI_ARGS: "--new-from-rev=HEAD~ --disable=gci"
-    - name: "Go Lint $GOOS Mandatory$MODULES_NAME"
+    - name: "Go Lint $GOOS Mandatory"
       env:
         # TODO: Re-enable dupword after ncdns issue #166 is fixed.
         # TODO: Re-enable varnamelen after golangci-lint v1.44 is released.
         GOLANGCI_ARGS: "--disable=cyclop,deadcode,dupword,errorlint,exhaustivestruct,forbidigo,forcetypeassert,funlen,gci,gocognit,gocritic,godot,godox,goerr113,gofumpt,goimports,golint,gosec,gosimple,govet,ineffassign,lll,maligned,nakedret,nestif,nilerr,nlreturn,nonamedreturns,paralleltest,revive,scopelint,staticcheck,stylecheck,thelper,unconvert,unparam,unused,varnamelen,wastedassign,whitespace,wrapcheck,wsl"
-    - name: "Go Lint $GOOS$MODULES_NAME"
+    - name: "Go Lint $GOOS"
       env:
         GOLANGCI_ARGS: ""
       allow_failures: true
@@ -76,7 +64,7 @@ task:
   lint_script: bash testdata/shellcheck.bash
 
 task:
-  name: "Unit Tests $CONTAINER_NAME$MODULES_NAME"
+  name: "Unit Tests $CONTAINER_NAME"
   alias: Unit Tests
   matrix:
     - env:
@@ -95,34 +83,24 @@ task:
         - dnf install -y golang libcap-devel
   path_script:
     - source testdata/move_to_gopath.bash
-  matrix:
-    - env:
-        GO111MODULE: "off"
-        MODULES_NAME: " Modules Off"
-      fetch_script:
-        - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - env:
-        MODULES_NAME: ""
-      systemd_script:
-        - mkdir -p $(go env GOPATH)/src/github.com/coreos
-        - cd $(go env GOPATH)/src/github.com/coreos
-        - git clone https://github.com/coreos/go-systemd.git
-      kingpin_script:
-        - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
-        - cd $(go env GOPATH)/src/github.com/alecthomas
-        - git clone https://github.com/alecthomas/kingpin.git
-      fetch_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
-        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
-        - go mod tidy
-        # Get the test suite
-        - mkdir -p $(go env GOPATH)/src/github.com/hlandau
-        - cd $(go env GOPATH)/src/github.com/hlandau
-        - git clone https://github.com/hlandau/nctestsuite.git
+  systemd_script:
+    - mkdir -p $(go env GOPATH)/src/github.com/coreos
+    - cd $(go env GOPATH)/src/github.com/coreos
+    - git clone https://github.com/coreos/go-systemd.git
+  kingpin_script:
+    - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
+    - cd $(go env GOPATH)/src/github.com/alecthomas
+    - git clone https://github.com/alecthomas/kingpin.git
+  fetch_script:
+    - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
+    - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
+    - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+    - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
+    - go mod tidy
+    # Get the test suite
+    - mkdir -p $(go env GOPATH)/src/github.com/hlandau
+    - cd $(go env GOPATH)/src/github.com/hlandau
+    - git clone https://github.com/hlandau/nctestsuite.git
   test_script:
     - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
     - go install -tags "$GOX_TAGS" -v ./...
@@ -132,7 +110,7 @@ task:
     GOX_TAGS: ""
 
 task:
-  name: "Functional Tests $CI_DISTRO Go $GO_VERSION$MODULES_NAME"
+  name: "Functional Tests $CI_DISTRO Go $GO_VERSION"
   alias: "Functional Tests"
   matrix:
     - compute_engine_instance:
@@ -182,13 +160,12 @@ task:
     - sleep 10s
     - testdata/regtest.sh
   depends_on:
-    - "Cross-Compile Go $GO_VERSION$MODULES_NAME"
+    - "Cross-Compile Go $GO_VERSION"
   env:
     GO_VERSION: latest
-    MODULES_NAME: ""
 
 task:
-  name: "Cross-Compile Go $GO_VERSION$MODULES_NAME"
+  name: "Cross-Compile Go $GO_VERSION"
   alias: Cross-Compile
   container:
     image: golang:$GO_VERSION
@@ -204,34 +181,22 @@ task:
     - apt-get install -y gcc-multilib libcap-dev libc6-dev:i386 libcap-dev:i386 libc6-dev:armhf libcap-dev:armhf libc6-dev:arm64 libcap-dev:arm64 libc6-dev:ppc64el libcap-dev:ppc64el
   path_script:
     - source testdata/move_to_gopath.bash
-  matrix:
-    - env:
-        GO111MODULE: "off"
-        MODULES_NAME: " Modules Off"
-      gox_script:
-        - go get github.com/mitchellh/gox
-      fetch_script:
-        - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - GOOS=windows go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-        - go get -tags "$GOX_TAGS" -d -v -t github.com/$CIRRUS_REPO_FULL_NAME/...
-    - env:
-        MODULES_NAME: ""
-      gox_script:
-        - go install github.com/mitchellh/gox@latest
-      systemd_script:
-        - mkdir -p $(go env GOPATH)/src/github.com/coreos
-        - cd $(go env GOPATH)/src/github.com/coreos
-        - git clone https://github.com/coreos/go-systemd.git
-      kingpin_script:
-        - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
-        - cd $(go env GOPATH)/src/github.com/alecthomas
-        - git clone https://github.com/alecthomas/kingpin.git
-      fetch_script:
-        - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
-        - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
-        - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
-        - go mod tidy
+  gox_script:
+    - go install github.com/mitchellh/gox@latest
+  systemd_script:
+    - mkdir -p $(go env GOPATH)/src/github.com/coreos
+    - cd $(go env GOPATH)/src/github.com/coreos
+    - git clone https://github.com/coreos/go-systemd.git
+  kingpin_script:
+    - mkdir -p $(go env GOPATH)/src/github.com/alecthomas
+    - cd $(go env GOPATH)/src/github.com/alecthomas
+    - git clone https://github.com/alecthomas/kingpin.git
+  fetch_script:
+    - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
+    - go mod init github.com/"$CIRRUS_REPO_FULL_NAME"
+    - go mod edit -replace github.com/coreos/go-systemd=$(go env GOPATH)/src/github.com/coreos/go-systemd
+    - go mod edit -replace gopkg.in/alecthomas/kingpin.v2=$(go env GOPATH)/src/github.com/alecthomas/kingpin
+    - go mod tidy
   build_script:
     - rm -rf idist
     - cd $(go env GOPATH)/src/github.com/"$CIRRUS_REPO_FULL_NAME"
