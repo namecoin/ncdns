@@ -115,14 +115,6 @@ task:
   matrix:
     - compute_engine_instance:
         image_project: debian-cloud
-        image: family/debian-11
-        platform: linux
-        cpu: 1
-        memory: 1G
-      env:
-        CI_DISTRO: debian-11
-    - compute_engine_instance:
-        image_project: debian-cloud
         image: family/debian-12
         platform: linux
         cpu: 1
