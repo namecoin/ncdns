@@ -7,7 +7,7 @@ import "fmt"
 import "os"
 import "strconv"
 import "io/ioutil"
-import "github.com/btcsuite/btcd/rpcclient"
+import ncrpcclient "github.com/JeremyRand/minincrpcclient"
 import "github.com/namecoin/ncdns/util"
 
 var rpchost = flag.String("rpchost", "", "Namecoin RPC host:port")
@@ -75,13 +75,11 @@ func main() {
 	}
 
 	// Connect to local namecoin core RPC server using HTTP POST mode.
-	connCfg := &rpcclient.ConnConfig{
+	connCfg := &ncrpcclient.ConnConfig{
 		Host:         *rpchost,
 		User:         *rpcuser,
 		Pass:         *rpcpass,
 		CookiePath:   *rpccookiepath,
-		HTTPPostMode: true, // Namecoin core only supports HTTP POST mode
-		DisableTLS:   true, // Namecoin core does not provide TLS by default
 	}
 
 	var err error

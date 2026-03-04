@@ -9,12 +9,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/hlandau/buildinfo"
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
 	madns "gopkg.in/hlandau/madns.v2"
 
+	ncrpcclient "github.com/JeremyRand/minincrpcclient"
 	"github.com/namecoin/ncdns/backend"
 	"github.com/namecoin/ncdns/namecoin"
 )
@@ -75,13 +75,11 @@ func New(cfg *Config) (s *Server, err error) {
 	ncdnsVersion = buildinfo.VersionSummary("github.com/namecoin/ncdns", "ncdns")
 
 	// Connect to local namecoin core RPC server using HTTP POST mode.
-	connCfg := &rpcclient.ConnConfig{
+	connCfg := &ncrpcclient.ConnConfig{
 		Host:         cfg.NamecoinRPCAddress,
 		User:         cfg.NamecoinRPCUsername,
 		Pass:         cfg.NamecoinRPCPassword,
 		CookiePath:   cfg.NamecoinRPCCookiePath,
-		HTTPPostMode: true, // Namecoin core only supports HTTP POST mode
-		DisableTLS:   true, // Namecoin core does not provide TLS by default
 	}
 
 	// Notice the notification parameter is nil since notifications are
