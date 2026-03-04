@@ -1,12 +1,11 @@
 package namecoin
 
 import (
-	"github.com/btcsuite/btcd/btcjson"
-	"github.com/btcsuite/btcd/rpcclient"
+	"github.com/ybbus/jsonrpc/v3"
 	"gopkg.in/hlandau/madns.v2/merr"
 
-	"github.com/namecoin/ncbtcjson"
-	"github.com/namecoin/ncrpcclient"
+	ncbtcjson "github.com/JeremyRand/minincbtcjson"
+	ncrpcclient "github.com/JeremyRand/minincrpcclient"
 )
 
 // Client represents an ncrpcclient.Client with an additional DNS-friendly
@@ -15,8 +14,8 @@ type Client struct {
 	*ncrpcclient.Client
 }
 
-func New(config *rpcclient.ConnConfig, ntfnHandlers *rpcclient.NotificationHandlers) (*Client, error) {
-	ncClient, err := ncrpcclient.New(config, ntfnHandlers)
+func New(config *ncrpcclient.ConnConfig) (*Client, error) {
+	ncClient, err := ncrpcclient.New(config)
 	if err != nil {
 		return nil, err
 	}
@@ -29,8 +28,8 @@ func New(config *rpcclient.ConnConfig, ntfnHandlers *rpcclient.NotificationHandl
 func (c *Client) NameQuery(name string, streamIsolationID string) (string, error) {
 	nameData, err := c.NameShow(name, &ncbtcjson.NameShowOptions{StreamID: streamIsolationID})
 	if err != nil {
-		if jerr, ok := err.(*btcjson.RPCError); ok {
-			if jerr.Code == btcjson.ErrRPCWallet {
+		if jerr, ok := err.(*jsonrpc.RPCError); ok {
+			if jerr.Code == ncbtcjson.ErrRPCWallet {
 				// ErrRPCWallet from name_show indicates that
 				// the name does not exist.
 				return "", merr.ErrNoSuchDomain
