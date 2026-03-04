@@ -91,7 +91,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Error creating RPC client: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Shutdown()
 
 	for i := 0; i+1 < len(args); i += 2 {
 		k := args[i]
