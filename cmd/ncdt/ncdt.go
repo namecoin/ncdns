@@ -86,7 +86,7 @@ func main() {
 
 	// Notice the notification parameter is nil since notifications are
 	// not supported in HTTP POST mode.
-	conn, err = namecoin.New(connCfg, nil)
+	conn, err = namecoin.New(connCfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating RPC client: %v\n", err)
 		os.Exit(1)
