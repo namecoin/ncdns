@@ -84,7 +84,7 @@ func New(cfg *Config) (s *Server, err error) {
 
 	// Notice the notification parameter is nil since notifications are
 	// not supported in HTTP POST mode.
-	client, err := namecoin.New(connCfg, nil)
+	client, err := namecoin.New(connCfg)
 	if err != nil {
 		return nil, err
 	}
