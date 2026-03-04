@@ -56,7 +56,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("Couldn't create RPC client: %s", err)
 	}
-	defer conn.Shutdown()
 
 	err = ncdumpzone.Dump(conn, os.Stdout, formatFlag.Value())
 	if err != nil {
