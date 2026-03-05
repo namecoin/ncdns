@@ -3,7 +3,6 @@ package ncdumpzone
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
@@ -43,11 +42,6 @@ func dumpRR(rr dns.RR, dest io.Writer, format string) error {
 
 func dumpName(item *ncbtcjson.NameShowResult, conn *namecoin.Client,
 	dest io.Writer, format string) error {
-	// The order in which name_scan returns results is seemingly rather
-	// random, so we can't stop when we see a non-d/ name, so just skip it.
-	if !strings.HasPrefix(item.Name, "d/") {
-		return nil
-	}
 
 	suffix, err := util.NamecoinKeyToBasename(item.Name)
 	if err != nil {
@@ -93,7 +87,7 @@ func Dump(conn *namecoin.Client, dest io.Writer, format string) error {
 	continuing := 0
 
 	for {
-		results, err := conn.NameScan(currentName, perCall)
+		results, err := conn.NameScan(currentName, perCall, &ncbtcjson.NameScanOptions{Prefix: "d/"})
 		if err != nil {
 			return fmt.Errorf("scan: %s", err)
 		}
