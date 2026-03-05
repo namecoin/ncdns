@@ -14,7 +14,7 @@ import (
 	"github.com/miekg/dns"
 	madns "gopkg.in/hlandau/madns.v2"
 
-	ncrpcclient "github.com/JeremyRand/minincrpcclient"
+	ncrpcclient "github.com/namecoin/minincrpcclient"
 	"github.com/namecoin/ncdns/backend"
 	"github.com/namecoin/ncdns/namecoin"
 )

@@ -7,7 +7,7 @@ import "fmt"
 import "os"
 import "strconv"
 import "io/ioutil"
-import ncrpcclient "github.com/JeremyRand/minincrpcclient"
+import ncrpcclient "github.com/namecoin/minincrpcclient"
 import "github.com/namecoin/ncdns/util"
 
 var rpchost = flag.String("rpchost", "", "Namecoin RPC host:port")

@@ -4,8 +4,8 @@ import (
 	"github.com/ybbus/jsonrpc/v3"
 	"gopkg.in/hlandau/madns.v2/merr"
 
-	ncbtcjson "github.com/JeremyRand/minincbtcjson"
-	ncrpcclient "github.com/JeremyRand/minincrpcclient"
+	ncbtcjson "github.com/namecoin/minincbtcjson"
+	ncrpcclient "github.com/namecoin/minincrpcclient"
 )
 
 // Client represents an ncrpcclient.Client with an additional DNS-friendly
