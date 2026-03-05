@@ -8,7 +8,7 @@ import (
 	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
 
-	ncbtcjson "github.com/JeremyRand/minincbtcjson"
+	ncbtcjson "github.com/namecoin/minincbtcjson"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdomain"
 	"github.com/namecoin/ncdns/rrtourl"
