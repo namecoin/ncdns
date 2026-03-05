@@ -7,7 +7,7 @@ import (
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 
-	ncrpcclient "github.com/JeremyRand/minincrpcclient"
+	ncrpcclient "github.com/namecoin/minincrpcclient"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdumpzone"
 )
