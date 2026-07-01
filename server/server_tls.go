@@ -6,9 +6,14 @@ package server
 import (
 	"fmt"
 
+	"github.com/namecoin/ncdns/config"
 	"github.com/namecoin/ncdns/tlsoverridefirefox/tlsoverridefirefoxsync"
 	"github.com/namecoin/tlsrestrictnss/tlsrestrictnsssync"
 )
+
+func RegisterBackgroundConfig(r *config.Loader) error {
+	return tlsoverridefirefoxsync.RegisterConfig(r)
+}
 
 func (s *Server) StartBackgroundTasks() error {
 	err := tlsoverridefirefoxsync.Start(s.namecoinConn, s.cfg.CanonicalSuffix)

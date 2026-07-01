@@ -8,22 +8,24 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/hlandau/easyconfig.v1/cflag"
-
+	"github.com/namecoin/ncdns/config"
 	"github.com/namecoin/ncdns/logconfig"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdumpzone"
 	"github.com/namecoin/ncdns/tlsoverridefirefox"
 )
 
-var (
-	flagGroup      = cflag.NewGroup(nil, "tlsoverridefirefox")
-	syncEnableFlag = cflag.Bool(flagGroup, "sync", false,
-		"Synchronize TLSA records from the Namecoin zone to Firefox's "+
-			"cert_override.txt")
-	firefoxProfileDirFlag = cflag.String(flagGroup, "profiledir", "",
-		"Firefox profile directory")
-)
+type Config struct {
+	Sync bool `default:"false" usage:"Synchronize TLSA records from the Namecoin zone to Firefox's cert_override.txt"`
+
+	ProfileDir string `default:"" usage:"Firefox profile directory"`
+}
+
+var cfg Config
+
+func RegisterConfig(r *config.Loader) error {
+	return r.Register("tlsoverridefirefox", &cfg)
+}
 
 var log = logconfig.New("ncdns.tlsoverridefirefoxsync")
 
@@ -56,7 +58,7 @@ func watchZone(conn *namecoin.Client) {
 }
 
 func watchProfile(suffix string) {
-	if firefoxProfileDirFlag.Value() == "" {
+	if cfg.ProfileDir == "" {
 		log.Fatal().Msg("Missing required config option tlsoverridefirefox.profiledir")
 	}
 
@@ -81,7 +83,7 @@ func watchProfile(suffix string) {
 		log.Debug().Msg("Syncing zone to cert_override.txt...")
 
 		prevOverrides, err := ioutil.ReadFile(
-			firefoxProfileDirFlag.Value() + "/cert_override.txt")
+			cfg.ProfileDir + "/cert_override.txt")
 		if err != nil {
 			if os.IsNotExist(err) {
 				// cert_override.txt doesn't exist in a default
@@ -106,7 +108,7 @@ func watchProfile(suffix string) {
 
 		// TODO: Does 0600 match the default behavior of Firefox?
 		// TODO: maybe instead write to a temp file and then move the file into place?
-		err = ioutil.WriteFile(firefoxProfileDirFlag.Value()+
+		err = ioutil.WriteFile(cfg.ProfileDir+
 			"/cert_override.txt", []byte(newOverrides), 0600)
 		if err != nil {
 			log.Fatal().Err(err).Msg("Couldn't write Firefox cert_override.txt")
@@ -121,7 +123,7 @@ func watchProfile(suffix string) {
 func profileInUse() bool {
 	// This glob pattern matches the ".sqlite-wal" and ".sqlite-shm" files
 	// that are only present when Firefox's databases are open.
-	matches, err := filepath.Glob(firefoxProfileDirFlag.Value() + "/*.sqlite-*")
+	matches, err := filepath.Glob(cfg.ProfileDir + "/*.sqlite-*")
 	if err != nil {
 		log.Fatal().Err(err).Msg("Couldn't check if Firefox is running for override sync")
 	}
@@ -133,7 +135,7 @@ func profileInUse() bool {
 // records to a Firefox profile's cert_override.txt.  It accepts a connection
 // to access Namecoin Core, as well as a host suffix (usually "bit").
 func Start(conn *namecoin.Client, suffix string) error {
-	if syncEnableFlag.Value() {
+	if cfg.Sync {
 		go watchZone(conn)
 		go watchProfile(suffix)
 	}

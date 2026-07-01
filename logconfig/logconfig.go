@@ -4,15 +4,13 @@ import (
 	"strings"
 
 	phuslog "github.com/phuslu/log"
-	"gopkg.in/hlandau/easyconfig.v1/cflag"
 )
 
-var (
-	flagGroup       = cflag.NewGroup(nil, "xlog")
-	logSeverityFlag = cflag.String(flagGroup, "severity", "NOTICE",
-		"Log severity")
-	loggers []*phuslog.CategorizedLogger
-)
+type Config struct {
+	Severity string `default:"NOTICE" usage:"Log severity"`
+}
+
+var loggers []*phuslog.CategorizedLogger
 
 func New(category string) *phuslog.CategorizedLogger {
 	logger := phuslog.DefaultLogger.Categorized(category)
@@ -20,8 +18,8 @@ func New(category string) *phuslog.CategorizedLogger {
 	return logger
 }
 
-func Init() {
-	level, ok := parseSeverity(logSeverityFlag.Value())
+func Init(cfg *Config) {
+	level, ok := parseSeverity(cfg.Severity)
 	if !ok {
 		return
 	}

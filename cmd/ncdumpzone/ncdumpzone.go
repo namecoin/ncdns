@@ -4,9 +4,8 @@ import (
 	"os"
 
 	"github.com/btcsuite/btcd/rpcclient"
-	"gopkg.in/hlandau/easyconfig.v1"
-	"gopkg.in/hlandau/easyconfig.v1/cflag"
 
+	"github.com/namecoin/ncdns/config"
 	"github.com/namecoin/ncdns/logconfig"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdumpzone"
@@ -14,42 +13,42 @@ import (
 
 var log = logconfig.New("ncdumpzone-main")
 
-var (
-	flagGroup   = cflag.NewGroup(nil, "ncdumpzone")
-	rpchostFlag = cflag.String(flagGroup, "namecoinrpcaddress",
-		"127.0.0.1:8336", "Namecoin RPC host:port")
-	rpcuserFlag = cflag.String(flagGroup, "namecoinrpcusername", "",
-		"Namecoin RPC username")
-	rpcpassFlag = cflag.String(flagGroup, "namecoinrpcpassword", "",
-		"Namecoin RPC password")
-	rpccookiepathFlag = cflag.String(flagGroup, "namecoinrpccookiepath", "",
-		"Namecoin RPC cookie path (used if password is unspecified)")
-	formatFlag = cflag.String(flagGroup, "format", "zonefile", "Output "+
-		"format.  \"zonefile\" = DNS zone file.  "+
-		"\"firefox-override\" = Firefox cert_override.txt format.  "+
-		"\"url-list\" = URL list.")
-)
+type Config struct {
+	NamecoinRPCAddress  string `default:"127.0.0.1:8336" usage:"Namecoin RPC host:port"`
+	NamecoinRPCUsername string `default:"" usage:"Namecoin RPC username"`
+	NamecoinRPCPassword string `default:"" usage:"Namecoin RPC password"`
+
+	NamecoinRPCCookiePath string `default:"" usage:"Namecoin RPC cookie path (used if password is unspecified)"`
+	Format                string `default:"zonefile" usage:"Output format.  \"zonefile\" = DNS zone file.  \"firefox-override\" = Firefox cert_override.txt format.  \"url-list\" = URL list."`
+}
 
 var conn *namecoin.Client
 
-var config = easyconfig.Configurator{
-	ProgramName: "ncdumpzone",
-}
-
 func main() {
-	err := config.Parse(nil)
+	cfg := Config{}
+	logCfg := logconfig.Config{}
+
+	loader := config.New("ncdumpzone")
+	if err := loader.Register("ncdumpzone", &cfg); err != nil {
+		panic(err)
+	}
+	if err := loader.Register("xlog", &logCfg); err != nil {
+		panic(err)
+	}
+
+	err := loader.Parse()
 	if err != nil {
 		log.Fatal().Err(err).Msg("Couldn't parse configuration")
 	}
 
-	logconfig.Init()
+	logconfig.Init(&logCfg)
 
 	// Connect to local namecoin core RPC server using HTTP POST mode.
 	connCfg := &rpcclient.ConnConfig{
-		Host:         rpchostFlag.Value(),
-		User:         rpcuserFlag.Value(),
-		Pass:         rpcpassFlag.Value(),
-		CookiePath:   rpccookiepathFlag.Value(),
+		Host:         cfg.NamecoinRPCAddress,
+		User:         cfg.NamecoinRPCUsername,
+		Pass:         cfg.NamecoinRPCPassword,
+		CookiePath:   cfg.NamecoinRPCCookiePath,
 		HTTPPostMode: true, // Namecoin core only supports HTTP POST mode
 		DisableTLS:   true, // Namecoin core does not provide TLS by default
 	}
@@ -62,7 +61,7 @@ func main() {
 	}
 	defer conn.Shutdown()
 
-	err = ncdumpzone.Dump(conn, os.Stdout, formatFlag.Value())
+	err = ncdumpzone.Dump(conn, os.Stdout, cfg.Format)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Couldn't dump zone")
 	}
