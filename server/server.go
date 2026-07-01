@@ -11,15 +11,15 @@ import (
 
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/hlandau/buildinfo"
-	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
 	madns "gopkg.in/hlandau/madns.v2"
 
 	"github.com/namecoin/ncdns/backend"
+	"github.com/namecoin/ncdns/logconfig"
 	"github.com/namecoin/ncdns/namecoin"
 )
 
-var log, Log = xlog.New("ncdns.server")
+var log = logconfig.New("ncdns.server")
 
 type Server struct {
 	cfg Config
@@ -215,7 +215,9 @@ func (s *Server) loadKey(fn, privateFn string) (k *dns.DNSKEY, privatek crypto.P
 	}
 
 	privatek, err = k.ReadPrivateKey(privatef, privateFn)
-	log.Fatale(err)
+	if err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
 
 	return
 }
@@ -225,14 +227,16 @@ func (s *Server) Start() error {
 	s.udpServer = s.runListener("udp")
 	s.tcpServer = s.runListener("tcp")
 	s.wgStart.Wait()
-	log.Info("Listeners started")
+	log.Info().Msg("Listeners started")
 
 	return s.StartBackgroundTasks()
 }
 
 func (s *Server) doRunListener(ds *dns.Server) {
 	err := ds.ActivateAndServe()
-	log.Fatale(err)
+	if err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
 }
 
 func (s *Server) runListener(net string) *dns.Server {

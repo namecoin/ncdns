@@ -110,3 +110,12 @@
 ### automatically, you must set the full path to it here manually. Paths will be
 ### interpreted relative to the configuration file.
 #tplpath="../tpl"
+
+
+### Logging (Optional)
+### ------------------
+[xlog]
+
+### Set the minimum log severity. Valid values include "trace", "debug", "info",
+### "notice", "warn", "error", and "critical".
+#severity="NOTICE"

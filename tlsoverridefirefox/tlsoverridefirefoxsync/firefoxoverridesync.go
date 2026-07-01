@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hlandau/xlog"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 
+	"github.com/namecoin/ncdns/logconfig"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdumpzone"
 	"github.com/namecoin/ncdns/tlsoverridefirefox"
@@ -25,7 +25,7 @@ var (
 		"Firefox profile directory")
 )
 
-var log, Log = xlog.New("ncdns.tlsoverridefirefoxsync")
+var log = logconfig.New("ncdns.tlsoverridefirefoxsync")
 
 var zoneData string
 var zoneDataReady = false
@@ -42,7 +42,9 @@ func watchZone(conn *namecoin.Client) {
 		var result bytes.Buffer
 
 		err := ncdumpzone.Dump(conn, &result, "firefox-override")
-		log.Fatale(err, "Couldn't dump zone for Firefox override sync")
+		if err != nil {
+			log.Fatal().Err(err).Msg("Couldn't dump zone for Firefox override sync")
+		}
 
 		zoneDataMux.Lock()
 		zoneData = result.String()
@@ -55,7 +57,7 @@ func watchZone(conn *namecoin.Client) {
 
 func watchProfile(suffix string) {
 	if firefoxProfileDirFlag.Value() == "" {
-		log.Fatal("Missing required config option tlsoverridefirefox.profiledir")
+		log.Fatal().Msg("Missing required config option tlsoverridefirefox.profiledir")
 	}
 
 	for {
@@ -76,7 +78,7 @@ func watchProfile(suffix string) {
 			continue
 		}
 
-		log.Debug("Syncing zone to cert_override.txt...")
+		log.Debug().Msg("Syncing zone to cert_override.txt...")
 
 		prevOverrides, err := ioutil.ReadFile(
 			firefoxProfileDirFlag.Value() + "/cert_override.txt")
@@ -89,15 +91,16 @@ func watchProfile(suffix string) {
 				// read an empty file.
 				prevOverrides = []byte(``)
 			} else {
-				log.Fatale(err,
-					"Couldn't read Firefox "+
-						"cert_override.txt")
+				log.Fatal().Err(err).Msg("Couldn't read Firefox " +
+					"cert_override.txt")
 			}
 		}
 
 		filteredPrevOverrides, err := tlsoverridefirefox.
 			FilterOverrides(string(prevOverrides), suffix)
-		log.Fatale(err, "Couldn't filter Firefox overrides")
+		if err != nil {
+			log.Fatal().Err(err).Msg("Couldn't filter Firefox overrides")
+		}
 
 		newOverrides := filteredPrevOverrides + zoneDataLocal + "\n"
 
@@ -105,9 +108,11 @@ func watchProfile(suffix string) {
 		// TODO: maybe instead write to a temp file and then move the file into place?
 		err = ioutil.WriteFile(firefoxProfileDirFlag.Value()+
 			"/cert_override.txt", []byte(newOverrides), 0600)
-		log.Fatale(err, "Couldn't write Firefox cert_override.txt")
+		if err != nil {
+			log.Fatal().Err(err).Msg("Couldn't write Firefox cert_override.txt")
+		}
 
-		log.Debug("Finished syncing zone to cert_override.txt")
+		log.Debug().Msg("Finished syncing zone to cert_override.txt")
 
 		time.Sleep(10 * time.Minute)
 	}
@@ -117,7 +122,9 @@ func profileInUse() bool {
 	// This glob pattern matches the ".sqlite-wal" and ".sqlite-shm" files
 	// that are only present when Firefox's databases are open.
 	matches, err := filepath.Glob(firefoxProfileDirFlag.Value() + "/*.sqlite-*")
-	log.Fatale(err, "Couldn't check if Firefox is running for override sync")
+	if err != nil {
+		log.Fatal().Err(err).Msg("Couldn't check if Firefox is running for override sync")
+	}
 
 	return matches != nil
 }

@@ -4,15 +4,15 @@ import (
 	"os"
 
 	"github.com/btcsuite/btcd/rpcclient"
-	"github.com/hlandau/xlog"
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 
+	"github.com/namecoin/ncdns/logconfig"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdumpzone"
 )
 
-var log, _ = xlog.New("ncdumpzone-main")
+var log = logconfig.New("ncdumpzone-main")
 
 var (
 	flagGroup   = cflag.NewGroup(nil, "ncdumpzone")
@@ -39,8 +39,10 @@ var config = easyconfig.Configurator{
 func main() {
 	err := config.Parse(nil)
 	if err != nil {
-		log.Fatalf("Couldn't parse configuration: %s", err)
+		log.Fatal().Err(err).Msg("Couldn't parse configuration")
 	}
+
+	logconfig.Init()
 
 	// Connect to local namecoin core RPC server using HTTP POST mode.
 	connCfg := &rpcclient.ConnConfig{
@@ -56,12 +58,12 @@ func main() {
 	// not supported in HTTP POST mode.
 	conn, err = namecoin.New(connCfg, nil)
 	if err != nil {
-		log.Fatalf("Couldn't create RPC client: %s", err)
+		log.Fatal().Err(err).Msg("Couldn't create RPC client")
 	}
 	defer conn.Shutdown()
 
 	err = ncdumpzone.Dump(conn, os.Stdout, formatFlag.Value())
 	if err != nil {
-		log.Fatalf("Couldn't dump zone: %s", err)
+		log.Fatal().Err(err).Msg("Couldn't dump zone")
 	}
 }
