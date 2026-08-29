@@ -5,10 +5,10 @@ import (
 	"io"
 	"strings"
 
-	"github.com/hlandau/xlog"
 	"github.com/miekg/dns"
 
 	"github.com/namecoin/ncbtcjson"
+	"github.com/namecoin/ncdns/logconfig"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdomain"
 	"github.com/namecoin/ncdns/rrtourl"
@@ -16,7 +16,7 @@ import (
 	"github.com/namecoin/ncdns/util"
 )
 
-var log, Log = xlog.New("ncdumpzone")
+var log = logconfig.New("ncdumpzone")
 
 const defaultPerCall uint32 = 1000
 
@@ -69,7 +69,9 @@ func dumpName(item *ncbtcjson.NameShowResult, conn *namecoin.Client,
 	}
 
 	rrs, err := value.RRsRecursive(nil, suffix+".bit.", "bit.")
-	log.Warne(err, "error generating RRs")
+	if err != nil {
+		log.Warn().Err(err).Msg("error generating RRs")
+	}
 
 	for _, rr := range rrs {
 		err = dumpRR(rr, dest, format)
@@ -100,7 +102,7 @@ func Dump(conn *namecoin.Client, dest io.Writer, format string) error {
 		}
 
 		if len(results) <= continuing {
-			log.Info("out of results, stopping")
+			log.Info().Msg("out of results, stopping")
 			break
 		}
 
@@ -129,11 +131,11 @@ func Dump(conn *namecoin.Client, dest io.Writer, format string) error {
 			// All of the results had a nameError but we're
 			// at the end of the results, so not a problem.
 			if lenResults < int(perCall)-1 {
-				log.Info("out of results, stopping")
+				log.Info().Msg("out of results, stopping")
 				break
 			}
 
-			log.Warnf("All %d results (start point %s) had a NameError", lenResults, currentName)
+			log.Warn().Msgf("All %d results (start point %s) had a NameError", lenResults, currentName)
 			perCall *= 2
 			continue
 		}

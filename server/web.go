@@ -96,7 +96,9 @@ func (ws *webServer) layoutInfo() *layoutInfo {
 
 func (ws *webServer) handleRoot(rw http.ResponseWriter, req *http.Request) {
 	err := mainPageTpl.Execute(rw, ws.layoutInfo())
-	log.Infoe(err, "tpl")
+	if err != nil {
+		log.Info().Err(err).Msg("tpl")
+	}
 }
 
 func (ws *webServer) handleLookup(rw http.ResponseWriter, req *http.Request) {
@@ -124,7 +126,9 @@ func (ws *webServer) handleLookup(rw http.ResponseWriter, req *http.Request) {
 
 	defer func() {
 		err := lookupPageTpl.Execute(rw, &info)
-		log.Infoe(err, "lookup page tpl")
+		if err != nil {
+			log.Info().Err(err).Msg("lookup page tpl")
+		}
 	}()
 
 	q := req.FormValue("q")
@@ -216,7 +220,9 @@ func webStart(listenAddr string, server *Server) error {
 
 	go func() {
 		err := s.ListenAndServe()
-		log.Errore(err, "HTTP server")
+		if err != nil {
+			log.Error().Err(err).Msg("HTTP server")
+		}
 	}()
 	return nil
 }
