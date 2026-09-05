@@ -89,12 +89,23 @@ jobs:
           - name: Go latest
             image: golang:latest
             package_manager: apt
+            install_go_package: false
+          - name: Debian testing
+            image: debian:testing
+            package_manager: apt
+            install_go_package: true
+          - name: Debian unstable
+            image: debian:unstable
+            package_manager: apt
+            install_go_package: true
           - name: Fedora latest
             image: fedora:latest
             package_manager: dnf
+            install_go_package: true
           - name: Fedora rawhide
             image: fedora:rawhide
             package_manager: dnf
+            install_go_package: true
     container: ${{ matrix.image }}
     steps:
       - name: Install dependencies
@@ -104,7 +115,15 @@ jobs:
           apt-get install -y libcap-dev
       - name: Install dependencies
         if: matrix.package_manager == 'dnf'
-        run: dnf install -y git golang libcap-devel
+        run: dnf install -y libcap-devel
+      - name: Install Go compiler
+        if: matrix.package_manager == 'apt' && matrix.install_go_package
+        run: |
+          apt-get update
+          apt-get install -y build-essential git golang
+      - name: Install Go compiler
+        if: matrix.package_manager == 'dnf' && matrix.install_go_package
+        run: dnf install -y git golang
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
