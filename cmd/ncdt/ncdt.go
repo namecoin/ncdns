@@ -7,7 +7,7 @@ import "fmt"
 import "os"
 import "strconv"
 import "io/ioutil"
-import "github.com/btcsuite/btcd/rpcclient"
+import ncrpcclient "github.com/namecoin/minincrpcclient"
 import "github.com/namecoin/ncdns/util"
 
 var rpchost = flag.String("rpchost", "", "Namecoin RPC host:port")
@@ -75,25 +75,22 @@ func main() {
 	}
 
 	// Connect to local namecoin core RPC server using HTTP POST mode.
-	connCfg := &rpcclient.ConnConfig{
+	connCfg := &ncrpcclient.ConnConfig{
 		Host:         *rpchost,
 		User:         *rpcuser,
 		Pass:         *rpcpass,
 		CookiePath:   *rpccookiepath,
-		HTTPPostMode: true, // Namecoin core only supports HTTP POST mode
-		DisableTLS:   true, // Namecoin core does not provide TLS by default
 	}
 
 	var err error
 
 	// Notice the notification parameter is nil since notifications are
 	// not supported in HTTP POST mode.
-	conn, err = namecoin.New(connCfg, nil)
+	conn, err = namecoin.New(connCfg)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating RPC client: %v\n", err)
 		os.Exit(1)
 	}
-	defer conn.Shutdown()
 
 	for i := 0; i+1 < len(args); i += 2 {
 		k := args[i]
