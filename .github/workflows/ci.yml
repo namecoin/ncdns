@@ -1,0 +1,285 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  GOTOOLCHAIN: local
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  lint:
+    name: Go Lint ${{ matrix.goos }} ${{ matrix.lint.name }}
+    runs-on: ubuntu-24.04
+    container: golang:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        goos:
+          - linux
+          - windows
+        lint:
+          - name: New
+            args: >-
+              --new-from-rev=HEAD~
+              --enable=cyclop,dupword,embeddedstructfieldcheck,err113,errcheck,exhaustive,forcetypeassert,funlen,gocognit,goconst,gocritic,godoclint,godot,gosec,govet,ineffassign,mnd,modernize,nakedret,nlreturn,staticcheck,unconvert,unparam,unused,wastedassign,wsl_v5
+          - name: Mandatory
+            args: >-
+              --enable=asasalint,asciicheck,bidichk,bodyclose,canonicalheader,decorder,dupl,durationcheck,errchkjson,errname,exptostd,gocheckcompilerdirectives,goprintffuncname,misspell,predeclared,usestdlibvars
+              --disable=errcheck,govet,ineffassign,staticcheck,unused
+          - name: Full
+            args: >-
+              --issues-exit-code=0
+              --enable=cyclop,dupword,embeddedstructfieldcheck,err113,errcheck,exhaustive,forcetypeassert,funlen,gocognit,goconst,gocritic,godoclint,godot,gosec,govet,ineffassign,mnd,modernize,nakedret,nlreturn,staticcheck,unconvert,unparam,unused,wastedassign,wsl_v5
+    env:
+      GOOS: ${{ matrix.goos }}
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y libcap-dev
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Trust repository
+        run: git config --global --add safe.directory "$PWD"
+      - name: Prepare Go module
+        run: bash testdata/prepare_go_module.bash
+      - name: Lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: latest
+          args: ${{ matrix.lint.args }} -v --timeout=5m --output.json.path=lint-report.json
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lint-${{ matrix.goos }}-${{ matrix.lint.name }}
+          path: lint-report.json
+          if-no-files-found: error
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-24.04
+    container: fedora:latest
+    steps:
+      - name: Install dependencies
+        run: dnf install -y git ShellCheck
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Lint
+        run: bash testdata/shellcheck.bash
+
+  unit-tests:
+    name: Unit Tests ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Go latest
+            image: golang:latest
+            package_manager: apt
+          - name: Fedora latest
+            image: fedora:latest
+            package_manager: dnf
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install dependencies
+        if: matrix.package_manager == 'apt'
+        run: |
+          apt-get update
+          apt-get install -y libcap-dev
+      - name: Install dependencies
+        if: matrix.package_manager == 'dnf'
+        run: dnf install -y git golang libcap-devel
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Trust repository
+        run: git config --global --add safe.directory "$PWD"
+      - name: Prepare Go module
+        run: bash testdata/prepare_go_module.bash
+      - name: Test
+        run: |
+          gopath="$(go env GOPATH)"
+          nctestsuite_path="$(go list -m -f '{{.Dir}}' github.com/hlandau/nctestsuite)"
+          mkdir -p "$gopath/src/github.com/hlandau/nctestsuite"
+          cp "$nctestsuite_path/testsuite.txt" "$gopath/src/github.com/hlandau/nctestsuite/"
+          export GOPATH="$gopath"
+          go install -v ./...
+          go test -v ./...
+
+  cross-compile:
+    name: Cross-Compile Go latest
+    runs-on: ubuntu-24.04
+    container: golang:latest
+    steps:
+      - name: Install dependencies
+        run: |
+          dpkg --add-architecture i386
+          dpkg --add-architecture armhf
+          dpkg --add-architecture arm64
+          dpkg --add-architecture ppc64el
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf \
+            gcc-i686-linux-gnu \
+            gcc-powerpc64le-linux-gnu \
+            libcap-dev \
+            libc6-dev:i386 libcap-dev:i386 \
+            libc6-dev:armhf libcap-dev:armhf \
+            libc6-dev:arm64 libcap-dev:arm64 \
+            libc6-dev:ppc64el libcap-dev:ppc64el
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Trust repository
+        run: git config --global --add safe.directory "$PWD"
+      - name: Prepare Go module
+        run: bash testdata/prepare_go_module.bash
+      - name: Build
+        run: |
+          release_tag=
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            release_tag="$GITHUB_REF_NAME"
+          fi
+
+          build_target() {
+            target="$1"
+            cgo_enabled="$2"
+            target_os="${target%/*}"
+            target_arch="${target#*/}"
+            output="idist/ncdns-${release_tag}-${target_os}_${target_arch}/bin"
+            mkdir -p "$output"
+            CGO_ENABLED="$cgo_enabled" GOOS="$target_os" GOARCH="$target_arch" go build -v -o "$output/" ./...
+          }
+
+          build_target linux/amd64 1
+          CC=i686-linux-gnu-gcc build_target linux/386 1
+          CC=arm-linux-gnueabihf-gcc build_target linux/arm 1
+          CC=aarch64-linux-gnu-gcc build_target linux/arm64 1
+          CC=powerpc64le-linux-gnu-gcc build_target linux/ppc64le 1
+
+          for target in \
+            darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm \
+            linux/ppc64 openbsd/386 openbsd/amd64 netbsd/386 \
+            netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64 \
+            windows/386 windows/amd64
+          do
+            build_target "$target" 0
+          done
+
+          bash testdata/dist.bash
+      - name: Upload binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: binaries
+          path: dist/*
+
+  functional-tests:
+    name: Functional Tests ${{ matrix.name }}
+    needs: cross-compile
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Debian 12
+            image: debian:12
+          - name: Debian 13
+            image: debian:13
+          - name: Ubuntu 24.04
+            image: ubuntu:24.04
+    container: ${{ matrix.image }}
+    steps:
+      - name: Install dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y ca-certificates curl git dnssec-trigger bind9-dnsutils xxd
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache Namecoin Core
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /tmp/bitcoind
+          key: namecoin-core-nc22.0-e751a698076002b66b56f6c28e09d87b964b4b6087ecc949ebe6f46166aa7133
+      - name: Download binaries
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: binaries
+          path: dist
+      - name: Install binaries
+        run: |
+          core_archive=/tmp/bitcoind/namecoin-nc22.0-x86_64-linux-gnu.tar.gz
+          mkdir -p /tmp/bitcoind
+          if [[ ! -f "$core_archive" ]] ||
+            ! echo "e751a698076002b66b56f6c28e09d87b964b4b6087ecc949ebe6f46166aa7133  $core_archive" | sha256sum --check
+          then
+            rm -f "$core_archive"
+            curl --fail --location --retry 5 --output "$core_archive" https://www.namecoin.org/files/namecoin-core/namecoin-core-22.0/namecoin-nc22.0-x86_64-linux-gnu.tar.gz
+            echo "e751a698076002b66b56f6c28e09d87b964b4b6087ecc949ebe6f46166aa7133  $core_archive" | sha256sum --check
+          fi
+          tar -xaf "$core_archive"
+          install -m 0755 namecoin-nc22.0/bin/namecoin-cli namecoin-nc22.0/bin/namecoind /usr/local/bin/
+
+          ncdns_archive="$(find dist -maxdepth 1 -name 'ncdns-*-linux_amd64.tar.gz' -print -quit)"
+          test -n "$ncdns_archive"
+          tar -xaf "$ncdns_archive"
+          ncdns_dir="$(basename "$ncdns_archive" .tar.gz)"
+          install -m 0755 "$ncdns_dir/bin/ncdns" /usr/local/bin/
+      - name: Test
+        run: |
+          original_resolv_conf="$(cat /etc/resolv.conf)"
+          cleanup() {
+            status="$?"
+            set +e
+            printf '%s\n' "$original_resolv_conf" > /etc/resolv.conf
+            if (( status != 0 )); then
+              cat /tmp/unbound.log /tmp/bitcoind.log /tmp/ncdns.log
+            fi
+            exit "$status"
+          }
+          trap cleanup EXIT
+
+          cp _doc/unbound.conf.d/ncdns.conf _doc/unbound.conf.d/ncdns-insecure.conf /etc/unbound/unbound.conf.d/
+          /usr/libexec/unbound-helper chroot_setup || true
+          /usr/libexec/unbound-helper root_trust_anchor_update || true
+          unbound -d -p > /tmp/unbound.log 2>&1 &
+
+          adduser --system --group --no-create-home ncdns
+          bash testdata/run_bitcoind.sh > /tmp/bitcoind.log 2>&1 &
+          ncdns -conf testdata/ncdns.conf > /tmp/ncdns.log 2>&1 &
+
+          ready=false
+          for _ in {1..30}; do
+            block_count="$(namecoin-cli getblockcount 2> /dev/null || printf 0)"
+            if (( block_count >= 150 )) &&
+              dig +short -p 5391 @127.0.0.1 SOA bit. | grep -q . &&
+              dig +short -p 53 @127.0.0.1 SOA bit. | grep -q .
+            then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "Functional test services did not become ready"
+            exit 1
+          fi
+
+          printf 'nameserver 127.0.0.1\n' > /etc/resolv.conf
+          bash testdata/regtest.sh
