@@ -92,6 +92,9 @@ jobs:
           - name: Fedora latest
             image: fedora:latest
             package_manager: dnf
+          - name: Fedora rawhide
+            image: fedora:rawhide
+            package_manager: dnf
     container: ${{ matrix.image }}
     steps:
       - name: Install dependencies
