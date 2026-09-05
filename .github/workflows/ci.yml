@@ -86,15 +86,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Go latest
+          - name: Go latest GC
             image: golang:latest
             package_manager: apt
-          - name: Fedora latest
+          - name: Fedora latest GC
             image: fedora:latest
             package_manager: dnf
-          - name: Fedora rawhide
+            go_package: golang
+          - name: Fedora rawhide GC
             image: fedora:rawhide
             package_manager: dnf
+            go_package: golang
+          - name: Fedora latest GCCGO
+            image: fedora:latest
+            package_manager: dnf
+            go_package: gcc-go
+          - name: Fedora rawhide GCCGO
+            image: fedora:rawhide
+            package_manager: dnf
+            go_package: gcc-go
     container: ${{ matrix.image }}
     steps:
       - name: Install dependencies
@@ -104,7 +114,7 @@ jobs:
           apt-get install -y libcap-dev
       - name: Install dependencies
         if: matrix.package_manager == 'dnf'
-        run: dnf install -y git golang libcap-devel
+        run: dnf install -y git ${{ matrix.go_package }} libcap-devel
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
