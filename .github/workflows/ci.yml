@@ -238,12 +238,20 @@ jobs:
           if-no-files-found: error
 
   functional-tests:
-    name: Functional Tests ${{ matrix.name }}
+    name: Functional Tests ${{ matrix.name }} ${{ matrix.auth }}
     needs: cross-compile
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
+        auth:
+          - pass
+          - cookie
+          - unix
+        name:
+          - Debian 12
+          - Debian 13
+          - Ubuntu 24.04
         include:
           - name: Debian 12
             image: debian:12
@@ -258,7 +266,7 @@ jobs:
           DEBIAN_FRONTEND: noninteractive
         run: |
           apt-get update
-          apt-get install -y ca-certificates curl git dnssec-trigger bind9-dnsutils xxd
+          apt-get install -y ca-certificates curl git dnssec-trigger bind9-dnsutils xxd socat
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -311,8 +319,8 @@ jobs:
           unbound -d -p > /tmp/unbound.log 2>&1 &
 
           adduser --system --group --no-create-home ncdns
-          bash testdata/run_bitcoind.sh > /tmp/bitcoind.log 2>&1 &
-          ncdns -conf testdata/ncdns.conf > /tmp/ncdns.log 2>&1 &
+          bash testdata/run_bitcoind.sh ${{ matrix.auth }} > /tmp/bitcoind.log 2>&1 &
+          ncdns -conf testdata/ncdns-${{ matrix.auth }}.conf > /tmp/ncdns.log 2>&1 &
 
           ready=false
           for _ in {1..30}; do
