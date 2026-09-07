@@ -216,6 +216,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        auth:
+          - pass
+          - cookie
+          - unix
         include:
           - name: Debian 12
             image: debian:12
@@ -283,8 +287,8 @@ jobs:
           unbound -d -p > /tmp/unbound.log 2>&1 &
 
           adduser --system --group --no-create-home ncdns
-          bash testdata/run_bitcoind.sh > /tmp/bitcoind.log 2>&1 &
-          ncdns -conf testdata/ncdns.conf > /tmp/ncdns.log 2>&1 &
+          bash testdata/run_bitcoind-${{ matrix.auth }}.sh > /tmp/bitcoind.log 2>&1 &
+          ncdns -conf testdata/ncdns-${{ matrix.auth }}.conf > /tmp/ncdns.log 2>&1 &
 
           ready=false
           for _ in {1..30}; do
