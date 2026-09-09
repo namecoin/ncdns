@@ -110,3 +110,44 @@
 ### automatically, you must set the full path to it here manually. Paths will be
 ### interpreted relative to the configuration file.
 #tplpath="../tpl"
+
+
+### Logging (Optional)
+### ------------------
+[xlog]
+
+### Set the minimum log severity. Valid values include "trace", "debug", "info",
+### "notice", "warn", "error", and "critical".
+#severity="NOTICE"
+
+### Log to a file. The default is to not log to a file.
+#file=""
+
+### Set the minimum severity for file logging.
+#fileseverity="TRACE"
+
+### Log to stderr? The default is true.
+#stderr=true
+
+### Set the minimum severity for stderr logging.
+#stderrseverity="TRACE"
+
+### Log to syslog? The default is false.
+#syslog=false
+
+### Set the syslog facility and minimum severity.
+#facility="daemon"
+#syslogseverity="DEBUG"
+
+### Log to the systemd journal? The default is false.
+#journal=false
+
+### Set the minimum severity for systemd journal logging.
+#journalseverity="DEBUG"
+
+### On Windows, log to the Windows Event Log? The default is false.
+#eventlog=false
+
+### Set the Event Log source name and minimum severity.
+#eventlogname=""
+#eventlogseverity="DEBUG"
