@@ -10,6 +10,10 @@
 ###
 ### You may explicitly specify a path to the configuration file on the
 ### command line by passing '-conf=PATH'.
+###
+### Adjacent configuration directories are searched as well. For example, if
+### this file is 'ncdns.conf', configuration will also be loaded from
+### 'ncdns.conf.d/*.conf'.
 
 [ncdns]
 ### This is a TOML configuration file. Values must be in quotes where shown.
