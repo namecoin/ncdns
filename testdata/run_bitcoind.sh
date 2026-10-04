@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 export HOME=~
-set -eux pipefail
+set -euxo pipefail
 
 # Adapted from Electrum-NMC.
 
