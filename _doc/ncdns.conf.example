@@ -10,6 +10,10 @@
 ###
 ### You may explicitly specify a path to the configuration file on the
 ### command line by passing '-conf=PATH'.
+###
+### Adjacent configuration directories are searched as well. For example, if
+### this file is 'ncdns.conf', configuration will also be loaded from
+### 'ncdns.conf.d/*.conf'.
 
 [ncdns]
 ### This is a TOML configuration file. Values must be in quotes where shown.
@@ -40,11 +44,16 @@
 
 ### namecoind access (Required)
 ### ---------------------------
-### You must configure the RPC address, username and password ## of a trusted
+### You must configure the RPC address, username and password of a trusted
 ### (i.e. local) namecoind instance.
 
 ### The address, in "hostname:port" format, of the Namecoin JSON-RPC interface.
+### For unix sockets, use e.g. "unix:///tmp/namecoin.sock"
 #namecoinrpcaddress="127.0.0.1:8336"
+
+### The path of a cookie file containing the username and password for the
+### Namecoin JSON-RPC interface.
+#namecoinrpccookiepath="/tmp/namecoin.cookie"
 
 ### The username with which to connect to the Namecoin JSON-RPC interface.
 #namecoinrpcusername="user"
