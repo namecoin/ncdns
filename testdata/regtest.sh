@@ -4,7 +4,7 @@ set -eu
 
 # Adapted from Electrum-NMC.
 
-bitcoin_cli="namecoin-cli -rpcuser=doggman -rpcpassword=donkey -rpcport=18554 -regtest"
+bitcoin_cli="namecoin-cli"
 
 function new_blocks()
 {
