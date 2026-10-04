@@ -307,7 +307,7 @@ func (v *Value) RRsRecursive(out []dns.RR, suffix, apexSuffix string) ([]dns.RR,
 	return out, nil
 }
 
-func (v *Value) findSubdomainByName(subdomain string) (*Value, error) {
+func (v *Value) FindSubdomainByName(subdomain string) (*Value, error) {
 	if subdomain == "" {
 		return v, nil
 	}
@@ -319,7 +319,7 @@ func (v *Value) findSubdomainByName(subdomain string) (*Value, error) {
 	head, rest := util.SplitDomainHead(subdomain)
 
 	if sub, ok := v.Map[head]; ok {
-		return sub.findSubdomainByName(rest)
+		return sub.FindSubdomainByName(rest)
 	}
 
 	return nil, fmt.Errorf("subdomain part not found: %s", head)
@@ -428,7 +428,7 @@ func parse(rv interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, dep
 	v.moveEmptyMapItems()
 
 	if subdomain != "" {
-		subv, err := v.findSubdomainByName(subdomain)
+		subv, err := v.FindSubdomainByName(subdomain)
 		if err != nil {
 			errFunc.add(fmt.Errorf("couldn't find subdomain by name in import or delegate item: %v", err))
 			return
