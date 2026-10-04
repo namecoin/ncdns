@@ -44,7 +44,7 @@
 
 ### namecoind access (Required)
 ### ---------------------------
-### You must configure the RPC address, username and password ## of a trusted
+### You must configure the RPC address, username and password of a trusted
 ### (i.e. local) namecoind instance.
 
 ### The address, in "hostname:port" format, of the Namecoin JSON-RPC interface.
