@@ -51,6 +51,10 @@
 ### For unix sockets, use e.g. "unix:///tmp/namecoin.sock"
 #namecoinrpcaddress="127.0.0.1:8336"
 
+### The path of a cookie file containing the username and password for the
+### Namecoin JSON-RPC interface.
+#namecoinrpccookiepath="/tmp/namecoin.cookie"
+
 ### The username with which to connect to the Namecoin JSON-RPC interface.
 #namecoinrpcusername="user"
 
