@@ -142,27 +142,69 @@ jobs:
           go test -v ./...
 
   cross-compile:
-    name: Cross-Compile Go latest
+    name: Cross-Compile Go latest ${{ matrix.target }}
     runs-on: ubuntu-24.04
     container: golang:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - linux_amd64
+          - linux_386
+          - linux_arm
+          - linux_arm64
+          - linux_ppc64le
+          - darwin_amd64
+          - freebsd_386
+          - freebsd_amd64
+          - freebsd_arm
+          - linux_ppc64
+          - openbsd_386
+          - openbsd_amd64
+          - netbsd_386
+          - netbsd_amd64
+          - netbsd_arm
+          - dragonfly_amd64
+          - solaris_amd64
+          - windows_386
+          - windows_amd64
+        include:
+          - target: linux_amd64
+            cgo_enabled: 1
+            packages: libcap-dev
+          - target: linux_386
+            cgo_enabled: 1
+            cc: i686-linux-gnu-gcc
+            dpkg_architecture: i386
+            packages: gcc-i686-linux-gnu libc6-dev:i386 libcap-dev:i386
+          - target: linux_arm
+            cgo_enabled: 1
+            cc: arm-linux-gnueabihf-gcc
+            dpkg_architecture: armhf
+            packages: gcc-arm-linux-gnueabihf libc6-dev:armhf libcap-dev:armhf
+          - target: linux_arm64
+            cgo_enabled: 1
+            cc: aarch64-linux-gnu-gcc
+            dpkg_architecture: arm64
+            packages: gcc-aarch64-linux-gnu libc6-dev:arm64 libcap-dev:arm64
+          - target: linux_ppc64le
+            cgo_enabled: 1
+            cc: powerpc64le-linux-gnu-gcc
+            dpkg_architecture: ppc64el
+            packages: gcc-powerpc64le-linux-gnu libc6-dev:ppc64el libcap-dev:ppc64el
     steps:
       - name: Install dependencies
+        if: matrix.cgo_enabled
+        env:
+          DPKG_ARCHITECTURE: ${{ matrix.dpkg_architecture }}
+          PACKAGES: ${{ matrix.packages }}
         run: |
-          dpkg --add-architecture i386
-          dpkg --add-architecture armhf
-          dpkg --add-architecture arm64
-          dpkg --add-architecture ppc64el
+          if [[ -n "$DPKG_ARCHITECTURE" ]]; then
+            dpkg --add-architecture "$DPKG_ARCHITECTURE"
+          fi
           apt-get update
-          apt-get install -y --no-install-recommends \
-            gcc-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabihf \
-            gcc-i686-linux-gnu \
-            gcc-powerpc64le-linux-gnu \
-            libcap-dev \
-            libc6-dev:i386 libcap-dev:i386 \
-            libc6-dev:armhf libcap-dev:armhf \
-            libc6-dev:arm64 libcap-dev:arm64 \
-            libc6-dev:ppc64el libcap-dev:ppc64el
+          read -r -a packages <<< "$PACKAGES"
+          apt-get install -y --no-install-recommends "${packages[@]}"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -171,43 +213,29 @@ jobs:
       - name: Prepare Go module
         run: bash testdata/prepare_go_module.bash
       - name: Build
+        env:
+          CC: ${{ matrix.cc || 'gcc' }}
+          CGO_ENABLED: ${{ matrix.cgo_enabled || '0' }}
+          TARGET: ${{ matrix.target }}
         run: |
           release_tag=
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then
             release_tag="$GITHUB_REF_NAME"
           fi
 
-          build_target() {
-            target="$1"
-            cgo_enabled="$2"
-            target_os="${target%/*}"
-            target_arch="${target#*/}"
-            output="idist/ncdns-${release_tag}-${target_os}_${target_arch}/bin"
-            mkdir -p "$output"
-            CGO_ENABLED="$cgo_enabled" GOOS="$target_os" GOARCH="$target_arch" go build -v -o "$output/" ./...
-          }
-
-          build_target linux/amd64 1
-          CC=i686-linux-gnu-gcc build_target linux/386 1
-          CC=arm-linux-gnueabihf-gcc build_target linux/arm 1
-          CC=aarch64-linux-gnu-gcc build_target linux/arm64 1
-          CC=powerpc64le-linux-gnu-gcc build_target linux/ppc64le 1
-
-          for target in \
-            darwin/amd64 freebsd/386 freebsd/amd64 freebsd/arm \
-            linux/ppc64 openbsd/386 openbsd/amd64 netbsd/386 \
-            netbsd/amd64 netbsd/arm dragonfly/amd64 solaris/amd64 \
-            windows/386 windows/amd64
-          do
-            build_target "$target" 0
-          done
+          target_os="${TARGET%_*}"
+          target_arch="${TARGET#*_}"
+          output="idist/ncdns-${release_tag}-${TARGET}/bin"
+          mkdir -p "$output"
+          GOOS="$target_os" GOARCH="$target_arch" go build -v -o "$output/" ./...
 
           bash testdata/dist.bash
       - name: Upload binaries
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: binaries
+          name: binaries-${{ matrix.target }}
           path: dist/*
+          if-no-files-found: error
 
   functional-tests:
     name: Functional Tests ${{ matrix.name }}
@@ -242,7 +270,7 @@ jobs:
       - name: Download binaries
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: binaries
+          name: binaries-linux_amd64
           path: dist
       - name: Install binaries
         run: |
