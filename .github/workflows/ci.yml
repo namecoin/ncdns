@@ -90,6 +90,10 @@ jobs:
             image: golang:latest
             package_manager: apt
             install_go_package: false
+          - name: Debian latest
+            image: debian:latest
+            package_manager: apt
+            install_go_package: true
           - name: Debian testing
             image: debian:testing
             package_manager: apt
