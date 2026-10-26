@@ -12,7 +12,6 @@ import (
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdomain"
 	"github.com/namecoin/ncdns/rrtourl"
-	"github.com/namecoin/ncdns/tlsoverridefirefox"
 	"github.com/namecoin/ncdns/util"
 )
 
@@ -24,12 +23,6 @@ func dumpRR(rr dns.RR, dest io.Writer, format string) error {
 	switch format {
 	case "zonefile":
 		fmt.Fprint(dest, rr.String(), "\n")
-	case "firefox-override":
-		result, err := tlsoverridefirefox.OverrideFromRR(rr)
-		if err != nil {
-			return err
-		}
-		fmt.Fprint(dest, result)
 	case "url-list":
 		result, err := rrtourl.URLsFromRR(rr)
 		if err != nil {
