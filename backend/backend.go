@@ -7,7 +7,7 @@ import "github.com/namecoin/ncdns/namecoin"
 import "github.com/namecoin/ncdns/util"
 import "github.com/namecoin/ncdns/ncdomain"
 import "github.com/namecoin/ncdns/tlshook"
-import "github.com/hlandau/xlog"
+import "github.com/namecoin/ncdns/logconfig"
 import "sync"
 import "fmt"
 import "net"
@@ -25,7 +25,7 @@ type Backend struct {
 	cfg        Config
 }
 
-var log, Log = xlog.New("ncdns.backend")
+var log = logconfig.New("ncdns.backend")
 
 // Backend configuration.
 type Config struct {
@@ -367,7 +367,9 @@ func (b *Backend) resolveName(name, streamIsolationID string) (jsonValue string,
 	result := make(chan struct{}, 1)
 	go func() {
 		jsonValue, err = b.nc.NameQuery(name, streamIsolationID)
-		log.Errore(err, "failed to query namecoin")
+		if err != nil {
+			log.Error().Err(err).Msg("failed to query namecoin")
+		}
 		result <- struct{}{}
 	}()
 
