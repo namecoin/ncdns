@@ -19,7 +19,6 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/namecoin/ncbtcjson v0.1.0
 	github.com/namecoin/ncrpcclient v0.1.0
-	github.com/namecoin/tlsrestrictnss v0.0.5
 	gopkg.in/hlandau/easyconfig.v1 v1.0.18
 	gopkg.in/hlandau/madns.v2 v2.0.2
 	gopkg.in/hlandau/service.v2 v2.0.17
@@ -46,7 +45,6 @@ require (
 	github.com/kcalvinalvin/anet v0.0.0-20251112173137-d8ddc1f6dbee // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
-	github.com/namecoin/crosssignnameconstraint v0.0.3 // indirect
 	github.com/ogier/pflag v0.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02 // indirect
