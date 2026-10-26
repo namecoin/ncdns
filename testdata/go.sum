@@ -72,8 +72,6 @@ github.com/namecoin/ncbtcjson v0.1.0 h1:N0A5tFpS82gQNDr8FoQwWPPuNeY0iZIJFYTb7udy
 github.com/namecoin/ncbtcjson v0.1.0/go.mod h1:qSA7Td0v4e3gXoWvszuJjzqJSie9XhH2lwLPMLmhkfY=
 github.com/namecoin/ncrpcclient v0.1.0 h1:dhzSGvaire6hadJsxFX9268Gce6E18wtVjAjG4SOHpo=
 github.com/namecoin/ncrpcclient v0.1.0/go.mod h1:bhsIDzYxt5ACJStqPBcAu3/4Cn5GNsgJxSoXHovlaP4=
-github.com/namecoin/splicesign v0.0.1 h1:hhPteXmtu8zDmK2vPW5DPc2wLZGnNKkQzi84iP5PdqM=
-github.com/namecoin/splicesign v0.0.1/go.mod h1:2KjXST9TPllte95x4OUg454qCHTLAOC5GL0UsyTtwF8=
 github.com/namecoin/tlsrestrictnss v0.0.5 h1:fiOMEa+d3dm/68bd8Gc1fpKtBIrlHT0yYZVNuqEhdsQ=
 github.com/namecoin/tlsrestrictnss v0.0.5/go.mod h1:mtAZQgYM8yzvcKcWc+BLaANF4lpPbOESEY+CYO39QD4=
 github.com/ogier/pflag v0.0.1 h1:RW6JSWSu/RkSatfcLtogGfFgpim5p7ARQ10ECk5O750=

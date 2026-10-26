@@ -19,7 +19,6 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/namecoin/ncbtcjson v0.1.0
 	github.com/namecoin/ncrpcclient v0.1.0
-	github.com/namecoin/splicesign v0.0.1
 	github.com/namecoin/tlsrestrictnss v0.0.5
 	gopkg.in/hlandau/easyconfig.v1 v1.0.18
 	gopkg.in/hlandau/madns.v2 v2.0.2
