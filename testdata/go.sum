@@ -40,6 +40,8 @@ github.com/namecoin/minincbtcjson v0.0.0-20260305082328-7d873627395b h1:R440VGXv
 github.com/namecoin/minincbtcjson v0.0.0-20260305082328-7d873627395b/go.mod h1:GBLgGEmPSzrmiYOB3L83PJoM7wU82G5lamGkHQIrUls=
 github.com/namecoin/minincrpcclient v0.0.0-20260305103222-6af3b21899d7 h1:iuDrIVQJkeszk9k67OXg7XJhzSsWydelMXrY2FWxk9I=
 github.com/namecoin/minincrpcclient v0.0.0-20260305103222-6af3b21899d7/go.mod h1:aXLGWyhH8zhaxme2WQLiqSAtSPEWDAL6701NcehE4KQ=
+github.com/namecoin/minincrpcclient v0.0.0-20261004113520-15af865d2857 h1:SUssLPmfEE/Izrz7ToT459DGfOJijkOh/9dXu7YK3us=
+github.com/namecoin/minincrpcclient v0.0.0-20261004113520-15af865d2857/go.mod h1:aXLGWyhH8zhaxme2WQLiqSAtSPEWDAL6701NcehE4KQ=
 github.com/ogier/pflag v0.0.1 h1:RW6JSWSu/RkSatfcLtogGfFgpim5p7ARQ10ECk5O750=
 github.com/ogier/pflag v0.0.1/go.mod h1:zkFki7tvTa0tafRvTBIZTvzYyAu6kQhPZFnshFFPE+g=
 github.com/pkg/diff v0.0.0-20210226163009-20ebb0f2a09e/go.mod h1:pJLUxLENpZxwdsKMEsNbx1VGcRFpLqf3715MtcvvzbA=
@@ -53,12 +55,16 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.4.0/go.mod h1:j7eGeouHqKxXV5pUuKE4zz7dFj8WfuZ+81PSLYec5m4=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
+github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
+github.com/stretchr/testify v1.12.1/go.mod h1:MDEgiDPPsNp5cuIrHPPCyornHKgEVbtFUmoNlxoYthg=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
 github.com/xhit/go-str2duration/v2 v2.1.0 h1:lxklc02Drh6ynqX+DdPyp5pCKLUQpRT8bp8Ydu2Bstc=
 github.com/xhit/go-str2duration/v2 v2.1.0/go.mod h1:ohY8p+0f07DiV6Em5LKB0s2YpLtXVyJfNt1+BlmyAsU=
 github.com/ybbus/jsonrpc/v3 v3.1.7 h1:rNuNkDgRV/PVNClgdwTB3r7JeGhZtx6dNtCMFJjZvVk=
 github.com/ybbus/jsonrpc/v3 v3.1.7/go.mod h1:U1QbyNfL5Pvi2roT0OpRbJeyvGxfWYSgKJHjxWdAEeE=
+github.com/ybbus/jsonrpc/v3 v3.1.9 h1:1rVdXY4tBhqDDOtAniAMwHxFM78+3ToV5zVgQ/ivjmw=
+github.com/ybbus/jsonrpc/v3 v3.1.9/go.mod h1:mgU+c1MnVVtbhcRNmA4oMCsUrXqJ+8MVYZq4kWGZrlk=
 golang.org/x/mod v0.31.0 h1:HaW9xtz0+kOcWKwli0ZXy79Ix+UW/vOfmWI5QVd2tgI=
 golang.org/x/mod v0.31.0/go.mod h1:43JraMp9cGx1Rx3AqioxrbrhNsLl2l/iNAvuBkrezpg=
 golang.org/x/net v0.48.0 h1:zyQRTTrjc33Lhh0fBgT/H3oZq9WuvRR5gPC70xpDiQU=
