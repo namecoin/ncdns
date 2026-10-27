@@ -3,11 +3,11 @@ package main
 import (
 	"os"
 
-	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/hlandau/xlog"
 	"gopkg.in/hlandau/easyconfig.v1"
 	"gopkg.in/hlandau/easyconfig.v1/cflag"
 
+	ncrpcclient "github.com/namecoin/minincrpcclient"
 	"github.com/namecoin/ncdns/namecoin"
 	"github.com/namecoin/ncdns/ncdumpzone"
 )
@@ -43,22 +43,19 @@ func main() {
 	}
 
 	// Connect to local namecoin core RPC server using HTTP POST mode.
-	connCfg := &rpcclient.ConnConfig{
+	connCfg := &ncrpcclient.ConnConfig{
 		Host:         rpchostFlag.Value(),
 		User:         rpcuserFlag.Value(),
 		Pass:         rpcpassFlag.Value(),
 		CookiePath:   rpccookiepathFlag.Value(),
-		HTTPPostMode: true, // Namecoin core only supports HTTP POST mode
-		DisableTLS:   true, // Namecoin core does not provide TLS by default
 	}
 
 	// Notice the notification parameter is nil since notifications are
 	// not supported in HTTP POST mode.
-	conn, err = namecoin.New(connCfg, nil)
+	conn, err = namecoin.New(connCfg)
 	if err != nil {
 		log.Fatalf("Couldn't create RPC client: %s", err)
 	}
-	defer conn.Shutdown()
 
 	err = ncdumpzone.Dump(conn, os.Stdout, formatFlag.Value())
 	if err != nil {
