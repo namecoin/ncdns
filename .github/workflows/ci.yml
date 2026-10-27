@@ -320,13 +320,27 @@ jobs:
 
           adduser --system --group --no-create-home ncdns
           bash testdata/run_bitcoind.sh ${{ matrix.auth }} > /tmp/bitcoind.log 2>&1 &
-          ncdns -conf testdata/ncdns-${{ matrix.auth }}.conf > /tmp/ncdns.log 2>&1 &
 
           ready=false
           for _ in {1..30}; do
             block_count="$(namecoin-cli getblockcount 2> /dev/null || printf 0)"
-            if (( block_count >= 150 )) &&
-              dig +short -p 5391 @127.0.0.1 SOA bit. | grep -q . &&
+            if (( block_count >= 150 ))
+            then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [[ "$ready" != true ]]; then
+            echo "Functional test Namecoin Core services did not become ready"
+            exit 1
+          fi
+
+          ncdns -conf testdata/ncdns-${{ matrix.auth }}.conf > /tmp/ncdns.log 2>&1 &
+
+          ready=false
+          for _ in {1..30}; do
+            if dig +short -p 5391 @127.0.0.1 SOA bit. | grep -q . &&
               dig +short -p 53 @127.0.0.1 SOA bit. | grep -q .
             then
               ready=true
@@ -335,7 +349,7 @@ jobs:
             sleep 1
           done
           if [[ "$ready" != true ]]; then
-            echo "Functional test services did not become ready"
+            echo "Functional test DNS services did not become ready"
             exit 1
           fi
 
