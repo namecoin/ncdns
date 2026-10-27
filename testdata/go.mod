@@ -17,8 +17,8 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/miekg/dns v1.1.72
 	github.com/namecoin/minincbtcjson v0.0.0-20260305082328-7d873627395b
-	github.com/namecoin/minincrpcclient v0.0.0-20260305103222-6af3b21899d7
-	github.com/ybbus/jsonrpc/v3 v3.1.7
+	github.com/namecoin/minincrpcclient v0.0.0-20261004113520-15af865d2857
+	github.com/ybbus/jsonrpc/v3 v3.1.9
 	gopkg.in/hlandau/easyconfig.v1 v1.0.18
 	gopkg.in/hlandau/madns.v2 v2.0.2
 	gopkg.in/hlandau/service.v2 v2.0.17
@@ -35,7 +35,7 @@ require (
 	github.com/ogier/pflag v0.0.1 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02 // indirect
-	github.com/stretchr/testify v1.10.0 // indirect
+	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
 	golang.org/x/mod v0.31.0 // indirect
