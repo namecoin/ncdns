@@ -17,7 +17,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/miekg/dns v1.1.72
 	github.com/namecoin/minincbtcjson v0.0.0-20260305082328-7d873627395b
-	github.com/namecoin/minincrpcclient v0.0.0-20261027061251-149ae2f242b1
+	github.com/namecoin/minincrpcclient v0.0.0-20261027070324-712add138074
 	github.com/ybbus/jsonrpc/v3 v3.1.9
 	gopkg.in/hlandau/easyconfig.v1 v1.0.18
 	gopkg.in/hlandau/madns.v2 v2.0.2
