@@ -283,6 +283,11 @@ func (tx *btx) doUserDomain() (rrs []dns.RR, err error) {
 		return nil, err
 	}
 
+	// TODO: add callback variable "OnValueReferencedFunc" to backend options so that we don't pollute this function with every hook that we want
+	//       might need to add the other attributes of tx, and sn, to the callback variable for flexibility's sake
+	// This doesn't normally return errors, but any errors during execution will be logged.
+	_ = tlshook.DomainBaseValueHook(tx.qname, d.ncv)
+
 	rrs, err = tx.doUnderDomain(d)
 	if err != nil {
 		return nil, err
@@ -451,11 +456,6 @@ func (tx *btx) _findNCValue(ncv *ncdomain.Value, isubname, subname string, depth
 
 func (tx *btx) addAnswersUnderNCValueActual(ncv *ncdomain.Value, sn string) (rrs []dns.RR, err error) {
 	rrs, err = ncv.RRs(nil, dns.Fqdn(tx.qname), dns.Fqdn(tx.basename+"."+tx.rootname))
-
-	// TODO: add callback variable "OnValueReferencedFunc" to backend options so that we don't pollute this function with every hook that we want
-	//       might need to add the other attributes of tx, and sn, to the callback variable for flexibility's sake
-	// This doesn't normally return errors, but any errors during execution will be logged.
-	_ = tlshook.DomainValueHookTLS(tx.qname, ncv)
 
 	return
 }
