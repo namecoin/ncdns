@@ -1,6 +1,6 @@
 module github.com/namecoin/ncdns
 
-go 1.26.5
+go 1.24.4
 
 replace github.com/coreos/go-systemd => ./go-systemd
 
