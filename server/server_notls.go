@@ -4,5 +4,9 @@
 package server
 
 func (s *Server) StartBackgroundTasks() error {
+	if s.cfg.ListenAIA {
+		log.Fatal("AIA requested but not built")
+	}
+
 	return nil
 }
