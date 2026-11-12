@@ -62,6 +62,13 @@ type Config struct {
 	TplSet               string `default:"std" usage:"The template set to use"`
 	TplPath              string `default:"" usage:"The path to the tpl directory (empty: autodetect)"`
 
+	ListenAIA bool `default:"false" usage:"Listen for AIA connections (default: disabled)"`
+
+	RootCert    string `default:"root_cert.pem" usage:"Sign with this root CA certificate."`
+	RootKey     string `default:"root_key.pem" usage:"Sign with this root CA private key."`
+	ListenChain string `default:"listen_chain.pem" usage:"Listen with this TLS certificate chain."`
+	ListenKey   string `default:"listen_key.pem" usage:"Listen with this TLS private key."`
+
 	ConfigDir string // path to interpret filenames relative to
 }
 
