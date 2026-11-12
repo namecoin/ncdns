@@ -1,15 +1,19 @@
 package server
 
-import "net/http"
-import "html/template"
-import "github.com/namecoin/ncdns/util"
-import "github.com/namecoin/ncdns/ncdomain"
-import "github.com/miekg/dns"
-import "github.com/kr/pretty"
-import "path/filepath"
-import "time"
-import "strings"
-import "fmt"
+import (
+	"fmt"
+	"html/template"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/kr/pretty"
+	"github.com/miekg/dns"
+
+	"github.com/namecoin/ncdns/ncdomain"
+	"github.com/namecoin/ncdns/util"
+)
 
 var layoutTpl *template.Template
 var mainPageTpl *template.Template
