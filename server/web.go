@@ -184,7 +184,7 @@ func (ws *webServer) handlePKICache(rw http.ResponseWriter, req *http.Request) {
 		BareName       string
 		NameParseError error
 		Expired        bool
-		RRs            []dns.RR
+		RRs            []*dns.TLSA
 		RRError        error
 	}{layoutInfo: *ws.layoutInfo()}
 
