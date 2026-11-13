@@ -4,6 +4,7 @@
 package tlshook
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -77,13 +78,18 @@ func cacheTrustInfo(qname string, ncv *ncdomain.Value) {
 // traffic is generated. Resistant to FPI leaks.
 func GetTLSARecords(qname string) ([]*dns.TLSA, error) {
 	trustInfo := getCachedTrustInfo(qname)
+	if trustInfo == nil {
+		// Domain isn't in the PKI cache, so return an empty TLSA set.
+		// Generally this isn't expected to happen, but a malicious TLS peer can induce it.
+		return nil, fmt.Errorf("eTLD+1 not in PKI cache; this is either a bug or a malicious TLS peer")
+	}
 
-	subname, _, _, err := util.SplitDomainByFloatingAnchor(qname, "bit")
+	wildcardQname := "*." + qname
+
+	wildcardSubname, _, _, err := util.SplitDomainByFloatingAnchor(wildcardQname, "bit")
 	if err != nil {
 		return nil, err
 	}
-
-	wildcardSubname := "*." + subname
 
 	subTrustInfo, err := trustInfo.FindSubdomainByName(wildcardSubname)
 	if err != nil {
