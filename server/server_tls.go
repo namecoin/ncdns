@@ -8,8 +8,6 @@ import encaya "github.com/namecoin/encaya/server"
 func (s *Server) StartBackgroundTasks() error {
 	if s.cfg.ListenAIA {
 		cfg := &encaya.Config {
-			DNSAddress: "127.0.0.1",
-			DNSPort:    5391,
 			ListenIP:   s.cfg.SelfIP,
 
 			RootCert:    s.cfg.RootCert,
@@ -17,11 +15,7 @@ func (s *Server) StartBackgroundTasks() error {
 			ListenChain: s.cfg.ListenChain,
 			ListenKey:   s.cfg.ListenKey,
 
-			NamecoinRPCUsername:   s.cfg.NamecoinRPCUsername,
-			NamecoinRPCPassword:   s.cfg.NamecoinRPCPassword,
-			NamecoinRPCAddress:    s.cfg.NamecoinRPCAddress,
-			NamecoinRPCCookiePath: s.cfg.NamecoinRPCCookiePath,
-			NamecoinRPCTimeout:    s.cfg.NamecoinRPCTimeout,
+			UseNcdnsCache: true,
 
 			ConfigDir:    s.cfg.ConfigDir,
 		}
