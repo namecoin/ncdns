@@ -4,7 +4,9 @@
 package tlshook
 
 import (
+	"encoding/hex"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -97,4 +99,48 @@ func GetTLSARecords(qname string) ([]*dns.TLSA, error) {
 	}
 
 	return subTrustInfo.TLSA, nil
+}
+
+// Returns all Revocation records that existed for the given qname at the time of the
+// most recent DNS query for that qname. No refreshing is done; no network
+// traffic is generated. Resistant to FPI leaks.
+func GetRevocationRecords(qname string) ([]*ncdomain.Revocation, error) {
+	trustInfo := getCachedTrustInfo(qname)
+	if trustInfo == nil {
+		// Domain isn't in the PKI cache, so return an empty revocation set.
+		// Generally this isn't expected to happen, but a malicious TLS peer can induce it.
+		return nil, fmt.Errorf("eTLD+1 not in PKI cache; this is either a bug or a malicious TLS peer")
+	}
+
+	wildcardQname := "*." + qname
+
+	wildcardSubname, _, _, err := util.SplitDomainByFloatingAnchor(wildcardQname, "bit")
+	if err != nil {
+		return nil, err
+	}
+
+	subTrustInfo, err := trustInfo.FindSubdomainByName(wildcardSubname)
+	if err != nil {
+		return nil, err
+	}
+
+	return subTrustInfo.Revocations, nil
+}
+
+// TODO: search toward base domain too
+func IsRevoked(qname string, subjectHash, serialHash []byte) (bool, error) {
+	revocations, err := GetRevocationRecords(qname)
+	if err != nil {
+		return false, err
+	}
+
+	subjectHashHex := hex.EncodeToString(subjectHash)
+	serialHashHex := hex.EncodeToString(serialHash)
+	for _, rev := range revocations {
+		if strings.HasPrefix(subjectHashHex, rev.SubjectHashPrefixHex) && strings.HasPrefix(serialHashHex, rev.SerialHashPrefixHex) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
