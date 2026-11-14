@@ -12,6 +12,7 @@ import (
 	"github.com/miekg/dns"
 
 	"github.com/namecoin/ncdns/ncdomain"
+	"github.com/namecoin/ncdns/tlshook"
 	"github.com/namecoin/ncdns/util"
 )
 
@@ -173,6 +174,38 @@ func (ws *webServer) handleLookup(rw http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func (ws *webServer) handlePKICache(rw http.ResponseWriter, req *http.Request) {
+	info := struct {
+		layoutInfo
+		Query          string
+		Advanced       bool
+		NamecoinName   string
+		DomainName     string
+		BareName       string
+		NameParseError error
+		Expired        bool
+		RRs            []*dns.TLSA
+		RRError        error
+	}{layoutInfo: *ws.layoutInfo()}
+
+	defer func() {
+		err := lookupPageTpl.Execute(rw, &info)
+		log.Infoe(err, "lookup page tpl")
+	}()
+
+	q := req.FormValue("q")
+	info.Query = q
+	info.BareName, info.NamecoinName, info.NameParseError = util.ParseFuzzyDomainNameNC(q)
+	if info.NameParseError != nil {
+		return
+	}
+
+	info.Advanced = (req.FormValue("adv") != "")
+	info.DomainName = info.BareName + ".bit."
+
+	info.RRs, info.RRError = tlshook.GetTLSARecords(info.DomainName)
+}
+
 func (ws *webServer) resolveFunc(name string) (string, error) {
 	return ws.s.namecoinConn.NameQuery(name, "")
 }
@@ -212,6 +245,7 @@ func webStart(listenAddr string, server *Server) error {
 
 	ws.sm.HandleFunc("/", ws.handleRoot)
 	ws.sm.HandleFunc("/lookup", ws.handleLookup)
+	ws.sm.HandleFunc("/pki-cache", ws.handlePKICache)
 
 	s := http.Server{
 		Addr:    listenAddr,
