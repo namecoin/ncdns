@@ -43,10 +43,16 @@ type Value struct {
 	Hostmaster   string    // "hostmaster@example.com"
 	MX           []*dns.MX // header name is left blank
 	TLSA         []*dns.TLSA
+	Revocations  []*Revocation
 	Map          map[string]*Value // may contain and "*", will not contain ""
 
 	// set if the value is at the top level (alas necessary for relname interpretation)
 	IsTopLevel bool
+}
+
+type Revocation struct {
+	SubjectHashPrefixHex string
+	SerialHashPrefixHex  string
 }
 
 func (v *Value) mkString(i string) string {
@@ -424,6 +430,7 @@ func parse(rv interface{}, v *Value, resolve ResolveFunc, errFunc ErrorFunc, dep
 	parseSRV(rvm, v, errFunc, relname)
 	parseMX(rvm, v, errFunc, relname)
 	parseTLSA(rvm, v, errFunc)
+	parseRevocations(rvm, v, errFunc)
 	parseMap(rvm, v, resolve, errFunc, depth, mergeDepth, relname)
 	v.moveEmptyMapItems()
 
@@ -996,6 +1003,53 @@ func parseSingleService(rv map[string]interface{}, svc interface{}, v *Value, er
 		Weight:   uint16(weight),
 		Port:     uint16(port),
 		Target:   hostname,
+	})
+}
+
+func parseRevocations(rv map[string]interface{}, v *Value, errFunc ErrorFunc) {
+	rrev, ok := rv["revoke"]
+	if !ok || rrev == nil {
+		return
+	}
+
+	v.Revocations = nil
+
+	if sa, ok := rrev.([]interface{}); ok {
+		for _, s := range sa {
+			parseSingleRevocation(rv, s, v, errFunc)
+		}
+	} else {
+		errFunc.add(fmt.Errorf("malformed revocation value"))
+	}
+}
+
+func parseSingleRevocation(rv map[string]interface{}, rev interface{}, v *Value, errFunc ErrorFunc) {
+	reva, ok := rev.([]interface{})
+	if !ok {
+		errFunc.add(fmt.Errorf("malformed revocation value"))
+		return
+	}
+
+	if len(reva) < 2 {
+		errFunc.add(fmt.Errorf("malformed revocation value: must have two items"))
+		return
+	}
+
+	subjectHashPrefixHex, ok := reva[0].(string)
+	if !ok {
+		errFunc.add(fmt.Errorf("malformed revocation value: first item must be a string (subject hash prefix)"))
+		return
+	}
+
+	serialHashPrefixHex, ok := reva[1].(string)
+	if !ok {
+		errFunc.add(fmt.Errorf("malformed revocation value: second item must be a string (serial number hash prefix)"))
+		return
+	}
+
+	v.Revocations = append(v.Revocations, &Revocation{
+		SubjectHashPrefixHex: subjectHashPrefixHex,
+		SerialHashPrefixHex: serialHashPrefixHex,
 	})
 }
 
