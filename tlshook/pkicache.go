@@ -128,16 +128,16 @@ func GetRevocationRecords(qname string) ([]*ncdomain.Revocation, error) {
 }
 
 // TODO: search toward base domain too
-func IsRevoked(qname string, subjectHash, serialHash []byte) (bool, error) {
+func IsRevoked(qname string, issuerHash, serial []byte) (bool, error) {
 	revocations, err := GetRevocationRecords(qname)
 	if err != nil {
 		return false, err
 	}
 
-	subjectHashHex := hex.EncodeToString(subjectHash)
-	serialHashHex := hex.EncodeToString(serialHash)
+	issuerHashHex := hex.EncodeToString(issuerHash)
+	serialHex := hex.EncodeToString(serial)
 	for _, rev := range revocations {
-		if strings.HasPrefix(subjectHashHex, rev.SubjectHashPrefixHex) && strings.HasPrefix(serialHashHex, rev.SerialHashPrefixHex) {
+		if strings.HasPrefix(issuerHashHex, rev.IssuerHashPrefixHex) && strings.HasPrefix(serialHex, rev.SerialPrefixHex) {
 			return true, nil
 		}
 	}

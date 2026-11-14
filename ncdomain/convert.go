@@ -51,8 +51,8 @@ type Value struct {
 }
 
 type Revocation struct {
-	SubjectHashPrefixHex string
-	SerialHashPrefixHex  string
+	IssuerHashPrefixHex string
+	SerialPrefixHex  string
 }
 
 func (v *Value) mkString(i string) string {
@@ -1035,21 +1035,21 @@ func parseSingleRevocation(rv map[string]interface{}, rev interface{}, v *Value,
 		return
 	}
 
-	subjectHashPrefixHex, ok := reva[0].(string)
+	issuerHashPrefixHex, ok := reva[0].(string)
 	if !ok {
-		errFunc.add(fmt.Errorf("malformed revocation value: first item must be a string (subject hash prefix)"))
+		errFunc.add(fmt.Errorf("malformed revocation value: first item must be a string (issuer hash prefix)"))
 		return
 	}
 
-	serialHashPrefixHex, ok := reva[1].(string)
+	serialPrefixHex, ok := reva[1].(string)
 	if !ok {
-		errFunc.add(fmt.Errorf("malformed revocation value: second item must be a string (serial number hash prefix)"))
+		errFunc.add(fmt.Errorf("malformed revocation value: second item must be a string (serial number prefix)"))
 		return
 	}
 
 	v.Revocations = append(v.Revocations, &Revocation{
-		SubjectHashPrefixHex: subjectHashPrefixHex,
-		SerialHashPrefixHex: serialHashPrefixHex,
+		IssuerHashPrefixHex: issuerHashPrefixHex,
+		SerialPrefixHex: serialPrefixHex,
 	})
 }
 
