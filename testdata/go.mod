@@ -17,7 +17,7 @@ require (
 	github.com/hlandau/xlog v1.0.0
 	github.com/kr/pretty v0.3.1
 	github.com/miekg/dns v1.1.72
-	github.com/namecoin/encaya v0.1.3-0.20261113195041-e2050332742f
+	github.com/namecoin/encaya v0.1.3-0.20261114041600-9b4865a21bbf
 	github.com/namecoin/ncbtcjson v0.1.0
 	github.com/namecoin/ncrpcclient v0.1.0
 	gopkg.in/hlandau/easyconfig.v1 v1.0.18
