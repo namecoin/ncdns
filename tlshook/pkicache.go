@@ -112,14 +112,12 @@ func GetRevocationRecords(qname string) ([]*ncdomain.Revocation, error) {
 		return nil, fmt.Errorf("eTLD+1 not in PKI cache; this is either a bug or a malicious TLS peer")
 	}
 
-	wildcardQname := "*." + qname
-
-	wildcardSubname, _, _, err := util.SplitDomainByFloatingAnchor(wildcardQname, "bit")
+	subname, _, _, err := util.SplitDomainByFloatingAnchor(qname, "bit")
 	if err != nil {
 		return nil, err
 	}
 
-	subTrustInfo, err := trustInfo.FindSubdomainByName(wildcardSubname)
+	subTrustInfo, err := trustInfo.FindSubdomainByName(subname)
 	if err != nil {
 		return nil, err
 	}
